@@ -46,7 +46,8 @@
     font-family: var(--serif); font-weight: 500; font-size: 1.6rem;
     color: #7cc4bb; letter-spacing: 0.01em; text-decoration: none;
   }
-  a:visited { color: inherit; }
+  a:visited:not(.nav-name) { color: inherit; }
+  .nav-name:visited { color: #7cc4bb; }
   .nav-links { display: flex; gap: 2rem; list-style: none; }
   .nav-links a {
     color: var(--text-dim); text-decoration: none; font-size: 0.85rem;
