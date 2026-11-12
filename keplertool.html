@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kepler's Laws — Interactive Explorer</title>
+<style>
+:root {
+  --bg: #0d0f1a;
+  --surface: #161829;
+  --surface2: #1e2135;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #e8eaf4;
+  --text2: #9196b0;
+  --accent: #6b8aff;
+  --accent2: #a78bfa;
+  --gold: #f4c24a;
+  --orbit: rgba(107,138,255,0.25);
+  --radius: 10px;
+  box-sizing: border-box;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: inherit; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+h1 { font-size: 1.1rem; font-weight: 500; letter-spacing: 0.03em; color: var(--text); }
+.subtitle { font-size: 0.75rem; color: var(--text2); margin-top: 2px; }
+
+.app { width: 100%; max-width: 1100px; padding: 20px 16px 32px; display: flex; flex-direction: column; gap: 16px; }
+
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.law-tabs { display: flex; gap: 6px; }
+.tab {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab:hover { color: var(--text); border-color: var(--accent); }
+.tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.main { display: grid; grid-template-columns: 1fr 280px; gap: 16px; }
+@media (max-width: 700px) { .main { grid-template-columns: 1fr; } }
+
+.canvas-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+}
+canvas { display: block; width: 100%; }
+
+.sidebar { display: flex; flex-direction: column; gap: 12px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.card-title { font-size: 0.72rem; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat {
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.stat-label { font-size: 0.65rem; color: var(--text2); margin-bottom: 3px; }
+.stat-value { font-size: 1.0rem; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.stat-value.gold { color: var(--gold); }
+.stat-value.accent { color: var(--accent); }
+
+.slider-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.slider-row:last-child { margin-bottom: 0; }
+.slider-label { display: flex; justify-content: space-between; font-size: 0.72rem; }
+.slider-label span:first-child { color: var(--text2); }
+.slider-label span:last-child { color: var(--text); font-weight: 500; }
+input[type=range] {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  background: var(--border2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.btn-row { display: flex; gap: 8px; }
+.btn {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--text2);
+  transition: all 0.15s;
+}
+.btn:hover { color: var(--text); border-color: var(--accent); }
+.btn.active, .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.law-desc {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--text2);
+}
+.law-desc strong { color: var(--text); font-weight: 500; }
+.law-desc .formula {
+  display: block;
+  margin: 8px 0;
+  padding: 7px 10px;
+  background: var(--surface2);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  color: var(--gold);
+}
+
+.area-legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.7rem; color: var(--text2); }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+.toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.toggle-label { font-size: 0.72rem; color: var(--text2); }
+.toggle {
+  position: relative; width: 32px; height: 18px;
+  background: var(--border2); border-radius: 9px; cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle.on { background: var(--accent); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%; background: #fff;
+  transition: transform 0.2s;
+}
+.toggle.on::after { transform: translateX(14px); }
+#planet-pills button:hover { filter: brightness(1.3); }
+.help-tab {
+  padding:8px 14px;font-size:0.75rem;font-weight:500;
+  background:transparent;border:none;border-bottom:2px solid transparent;
+  color:var(--text2);cursor:pointer;transition:all 0.15s;margin-bottom:-1px;
+}
+.help-tab:hover { color:var(--text); }
+.help-tab.active { color:var(--accent);border-bottom-color:var(--accent); }
+.help-block {
+  background:var(--surface2);border-radius:8px;padding:12px 14px;margin-bottom:10px;
+}
+.help-block-title {
+  font-size:0.72rem;font-weight:600;color:var(--text2);text-transform:uppercase;
+  letter-spacing:0.07em;margin-bottom:8px;
+}
+
+.speed-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.speed-label { font-size: 0.7rem; color: var(--text2); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <h1>Kepler's Laws of Planetary Motion</h1>
+      <div class="subtitle">Interactive orbital mechanics explorer</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="law-tabs">
+        <button class="tab active" onclick="setLaw(1)">Law I</button>
+        <button class="tab" onclick="setLaw(2)">Law II</button>
+        <button class="tab" onclick="setLaw(3)">Law III</button>
+      </div>
+      <button onclick="document.getElementById('help-modal').style.display='flex'" style="
+        width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border2);
+        background:var(--surface2);color:var(--text2);font-size:0.85rem;font-weight:600;
+        cursor:pointer;display:flex;align-items:center;justify-content:center;
+        transition:all 0.15s;flex-shrink:0;
+      " title="Help">?</button>
+    </div>
+  </div>
+
+  <!-- Help modal -->
+  <div id="help-modal" onclick="if(event.target===this)this.style.display='none'" style="
+    display:none;position:fixed;inset:0;z-index:1000;
+    background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);
+    align-items:center;justify-content:center;padding:20px;
+  ">
+    <div style="
+      background:var(--surface);border:1px solid var(--border2);border-radius:16px;
+      max-width:680px;width:100%;max-height:85vh;display:flex;flex-direction:column;
+      overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.5);
+    ">
+      <!-- Modal header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:1rem;font-weight:600;color:var(--text)">User Guide</div>
+          <div style="font-size:0.72rem;color:var(--text2);margin-top:2px">Kepler's Laws Interactive Explorer</div>
+        </div>
+        <button onclick="document.getElementById('help-modal').style.display='none'" style="
+          width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);
+          background:var(--surface2);color:var(--text2);font-size:1rem;
+          cursor:pointer;display:flex;align-items:center;justify-content:center;
+          transition:all 0.15s;
+        ">×</button>
+      </div>
+      <!-- Tab nav -->
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 20px">
+        <button class="help-tab active" onclick="showHelpTab(0,this)">Overview</button>
+        <button class="help-tab" onclick="showHelpTab(1,this)">Law I</button>
+        <button class="help-tab" onclick="showHelpTab(2,this)">Law II</button>
+        <button class="help-tab" onclick="showHelpTab(3,this)">Law III</button>
+        <button class="help-tab" onclick="showHelpTab(4,this)">Tips</button>
+      </div>
+      <!-- Content -->
+      <div style="overflow-y:auto;padding:20px;flex:1">
+
+        <div class="help-section active" id="hs0">
+          <p style="color:var(--text);line-height:1.7;margin-bottom:12px">This tool lets you explore all three of Kepler's Laws of Planetary Motion interactively. Use the <strong>Law I / Law II / Law III</strong> tabs at the top right to switch between laws.</p>
+          <p style="color:var(--text2);line-height:1.7">Each law has the same general layout: the orbit animation fills the main panel, with a sidebar on the right for the law description and controls. Below the animation are a live measurements bar, any graphs, and the playback controls. The planet always moves according to the real physics — Kepler's equations are solved numerically at every frame.</p>
+        </div>
+
+        <div class="help-section" id="hs1" style="display:none">
+          <p style="color:var(--text);line-height:1.7;margin-bottom:16px"><strong>What it shows.</strong> Every planet orbits the Sun in an ellipse with the Sun at one focus. The r₁ and r₂ lines show the distances from the planet to each focus, and their sum always equals 2a — no matter where the planet is.</p>
+          <div class="help-block"><div class="help-block-title">Controls bar (below the animation)</div>
+            <ul style="margin:0;padding-left:18px;line-height:2">
+              <li><strong>Semi-major axis a</strong> — drag to scale the orbit from 0.3 to 20 AU</li>
+              <li><strong>Eccentricity e</strong> — drag from 0 (circular) toward 0.95 (very elongated)</li>
+              <li><strong>Show orbit / Show foci</strong> — toggles the dashed orbit path, focus markers, r₁/r₂ lines</li>
+              <li><strong>Pause / Play / Reset / Speed</strong> — control the animation</li>
+            </ul>
+          </div>
+          <div class="help-block"><div class="help-block-title">Planet presets (sidebar)</div>
+            <p style="margin:0;line-height:1.7;color:var(--text2)">Click any planet pill to overlay its real orbital parameters. Multiple planets can be selected at once — each orbit is drawn in its own colour. Click an already-selected planet to make it <strong>active</strong> (its measurements are shown). Click active again to deselect. <strong>Clear all</strong> returns to manual sliders.</p>
+          </div>
+          <div class="help-block"><div class="help-block-title">Dragging the planet</div>
+            <p style="margin:0;line-height:1.7;color:var(--text2)">Hover over the planet — the cursor changes to a grab hand. Click and drag to move it anywhere around the orbit. The measurements bar updates live as you drag.</p>
+          </div>
+          <div class="help-block"><div class="help-block-title">Measurements bar</div>
+            <table style="width:100%;border-collapse:collapse;font-size:0.78rem">
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px;color:var(--text)">r₁</td><td style="padding:5px 8px;color:var(--text2)">Distance from planet to F₁ (the Sun)</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px;color:var(--text)">r₂</td><td style="padding:5px 8px;color:var(--text2)">Distance from planet to F₂ (the empty focus)</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px;color:var(--text)">r₁ + r₂ = 2a</td><td style="padding:5px 8px;color:var(--text2)">Always constant — Kepler's first law</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px;color:var(--text)">e</td><td style="padding:5px 8px;color:var(--text2)">Eccentricity of the active orbit</td></tr>
+              <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 8px;color:var(--text)">rₚ</td><td style="padding:5px 8px;color:var(--text2)">Perihelion distance = a(1 − e)</td></tr>
+              <tr><td style="padding:5px 8px;color:var(--text)">rₐ</td><td style="padding:5px 8px;color:var(--text2)">Aphelion distance = a(1 + e)</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="help-section" id="hs2" style="display:none">
+          <p style="color:var(--text);line-height:1.7;margin-bottom:16px"><strong>What it shows.</strong> A line from the Sun to the planet sweeps equal areas in equal times. The blue sector (A₁, near perihelion) and gold sector (A₂, near aphelion) have the same area because the same time elapsed — even though they look very different in shape.</p>
+          <div class="help-block"><div class="help-block-title">Planet presets</div>
+            <p style="margin:0;line-height:1.7;color:var(--text2)">Click any planet pill to load its real eccentricity. The orbit, planet graphic, and speed/distance graph all update. Moving the eccentricity slider manually clears any preset.</p>
+          </div>
+          <div class="help-block"><div class="help-block-title">Sweeping A₃</div>
+            <p style="margin:0;line-height:1.7;color:var(--text2)">Click anywhere on the canvas to start an animated sweep (green, A₃) from the planet's current position. It stops automatically once the area equals A₁ and A₂. Click <strong>Clear A₃</strong> in the measurements bar to reset.</p>
+          </div>
+          <div class="help-block"><div class="help-block-title">Speed/distance graph</div>
+            <p style="margin:0;line-height:1.7;color:var(--text2)">Shows orbital speed (green) and distance from the Sun (blue) across the full orbit, with phase 0 at perihelion. A moving playhead tracks the current position. With a preset active, axes show real km/s and AU.</p>
+          </div>
+        </div>
+
+        <div class="help-section" id="hs3" style="display:none">
+          <p style="color:var(--text);line-height:1.7;margin-bottom:16px"><strong>What it shows.</strong> T² = a³ (in AU and years) for every planet, so T²/a³ ≈ 1.00 universally. The animation shows all five inner planets orbiting at their correct relative periods.</p>
+          <div class="help-block"><div class="help-block-title">Log-log plot</div>
+            <p style="margin:0;line-height:1.7;color:var(--text2)">Shows log T vs log a for all eight planets. Because T² = a³, the points lie exactly on a straight line of slope 3/2. Click any planet dot to show its a (AU) and T (years). Click again to dismiss.</p>
+          </div>
+          <div class="help-block"><div class="help-block-title">Custom orbit</div>
+            <p style="margin:0;line-height:1.7;color:var(--text2)">Use the <strong>Custom Orbit</strong> sliders in the sidebar to define any orbit from 0.1–32 AU. A dashed pink orbit and planet appear on the canvas; a pink diamond on the log-log plot always sits exactly on the T² = a³ line, however you adjust a.</p>
+          </div>
+        </div>
+
+        <div class="help-section" id="hs4" style="display:none">
+          <div class="help-block"><div class="help-block-title">Halley's Comet (Laws I & II)</div>
+            <p style="margin:0;line-height:1.7;color:var(--text2)">The most dramatic preset — e = 0.967. The comet blazes through perihelion and barely crawls at aphelion. The tail always points away from the Sun and grows much longer near perihelion.</p>
+          </div>
+          <div class="help-block"><div class="help-block-title">Verifying r₁ + r₂ = 2a (Law I)</div>
+            <p style="margin:0;line-height:1.7;color:var(--text2)">Drag the planet around the orbit and watch the r₁ + r₂ value in the measurements bar — it stays exactly equal to 2a the whole way round.</p>
+          </div>
+          <div class="help-block"><div class="help-block-title">Checking equal areas (Law II)</div>
+            <p style="margin:0;line-height:1.7;color:var(--text2)">Pause near perihelion and click to sweep A₃. Then pause near aphelion and sweep again. The two green sectors will look very different in shape but always cover the same area.</p>
+          </div>
+          <div class="help-block"><div class="help-block-title">The T² = a³ line (Law III)</div>
+            <p style="margin:0;line-height:1.7;color:var(--text2)">Use the Custom Orbit sliders at different values of a. The diamond always sits exactly on the dashed reference line — Kepler's third law holds universally.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+      <div class="canvas-card">
+        <canvas id="c" height="520"></canvas>
+      </div>
+      <div id="stats-bar" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 16px"></div>
+      <div class="canvas-card" id="graph-card" style="display:none">
+        <canvas id="graph" height="130"></canvas>
+      </div>
+      <div id="controls-card" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px"></div>
+    </div>
+    <div class="sidebar" id="sidebar"></div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, cx, cy;
+
+const graph = document.getElementById('graph');
+const gctx = graph.getContext('2d');
+let GW, GH;
+
+function resize() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = canvas.width = rect.width * devicePixelRatio;
+  H = canvas.height = 520 * devicePixelRatio;
+  canvas.style.height = '520px';
+  cx = W / 2; cy = H / 2;
+  dpr = devicePixelRatio;
+  // Graph canvas matches main canvas width
+  GW = graph.width = rect.width * devicePixelRatio;
+  GH = graph.height = 130 * devicePixelRatio;
+  graph.style.height = '130px';
+}
+window.addEventListener('resize', () => { resize(); if (!animId) draw(); });
+
+let dpr = 1;
+let currentLaw = 1;
+let animId = null;
+let t = 0;
+let running = true;
+let speed = 1;
+let ecc = 0.6;
+let ecc2 = 0.3;
+let semiMajorA = 1.0; // in AU, used for Law 1 display & equations
+
+// Planet presets (real values)
+const PLANETS = [
+  { name: 'Mercury', a: 0.387, e: 0.206, color: '#a8a8a8', T: 0.241 },
+  { name: 'Venus',   a: 0.723, e: 0.007, color: '#e8c88a', T: 0.615 },
+  { name: 'Earth',   a: 1.000, e: 0.017, color: '#4f9eff', T: 1.000 },
+  { name: 'Mars',    a: 1.524, e: 0.093, color: '#e06030', T: 1.881 },
+  { name: 'Jupiter', a: 5.203, e: 0.049, color: '#d4a060', T: 11.86 },
+  { name: 'Saturn',  a: 9.537, e: 0.057, color: '#c8b560', T: 29.46 },
+  { name: 'Halley',  a: 17.83, e: 0.967, color: '#80d4ff', T: 75.3  },
+];
+let selectedPlanets = new Set(); // indices into PLANETS
+let activePlanet = null;         // index of the planet whose stats are shown / draggable
+let showOrbitPath = true;
+let showFoci = true;
+let showAreas = true;
+let law2SweepStart = null;   // mean-anomaly fraction where sweep began
+let law2SweepEnd = null;     // target end (sweepStart + sweepDuration)
+let law2SweepCurrent = null; // current animated end, grows toward law2SweepEnd
+let law2Sweeping = false;    // currently animating
+const sweepDuration = 0.08;  // same time interval as A1/A2
+let areaTimer = 0;
+let sweepedAreas = [];
+let sweepStart = null;
+let sweepInterval = 0;
+
+// Orbital math: ellipse with semi-major a, eccentricity e
+// r = a(1-e²)/(1+e·cos(θ))
+function orbitalPos(theta, a, e, offX, offY) {
+  const r = a * (1 - e * e) / (1 + e * Math.cos(theta));
+  return { x: offX + r * Math.cos(theta), y: offY + r * Math.sin(theta), r };
+}
+
+function getOrbitPoints(a, e, offX, offY, steps = 300) {
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const theta = (i / steps) * Math.PI * 2;
+    pts.push(orbitalPos(theta, a, e, offX, offY));
+  }
+  return pts;
+}
+
+// Kepler's equation: M = E - e*sin(E), solve for E given M
+function keplerE(M, e, iter = 50) {
+  let E = M;
+  for (let i = 0; i < iter; i++) {
+    E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  }
+  return E;
+}
+
+function trueAnomaly(M, e) {
+  const E = keplerE(M, e);
+  return 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2));
+}
+
+// Colors
+const STAR_COLOR = '#FFF4E0';
+const PLANET1 = '#6b8aff';
+const PLANET2 = '#a78bfa';
+const PLANET3 = '#34d399';
+const FOCUS_COLOR = 'rgba(244,194,74,0.7)';
+const PERIHELION_COLOR = '#f97316';
+const APHELION_COLOR = '#38bdf8';
+
+function drawStar(x, y, r = 18) {
+  // Glow
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+  g.addColorStop(0, 'rgba(255,240,180,0.35)');
+  g.addColorStop(1, 'rgba(255,240,180,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 3, 0, Math.PI * 2);
+  ctx.fill();
+  // Core
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFF4E0';
+  ctx.fill();
+}
+
+function drawJupiter(x, y, r) {
+  // Base planet
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Background (pale tan)
+  ctx.fillStyle = '#c8a96e';
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+
+  // Bands (drawn as horizontal strips clipped to the circle)
+  const bands = [
+    { yFrac: -0.75, h: 0.18, color: '#b8936a' },
+    { yFrac: -0.45, h: 0.14, color: '#a07040' },
+    { yFrac: -0.22, h: 0.20, color: '#c8a970' },
+    { yFrac:  0.02, h: 0.22, color: '#9a6835' },
+    { yFrac:  0.28, h: 0.16, color: '#b88855' },
+    { yFrac:  0.50, h: 0.20, color: '#a07545' },
+    { yFrac:  0.72, h: 0.18, color: '#c09060' },
+  ];
+  for (const b of bands) {
+    ctx.fillStyle = b.color;
+    ctx.fillRect(x - r, y + b.yFrac * r, r * 2, b.h * r);
+  }
+
+  // Great Red Spot
+  ctx.save();
+  ctx.translate(x + r * 0.25, y + r * 0.12);
+  ctx.scale(1, 0.6);
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.28, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(180,60,40,0.85)';
+  ctx.fill();
+  // inner highlight
+  ctx.beginPath();
+  ctx.arc(-r * 0.05, -r * 0.04, r * 0.13, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(220,90,60,0.6)';
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+
+  // Edge shading for roundness
+  const edge = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+  edge.addColorStop(0, 'rgba(255,255,255,0.15)');
+  edge.addColorStop(0.6, 'rgba(0,0,0,0)');
+  edge.addColorStop(1, 'rgba(0,0,0,0.45)');
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = edge;
+  ctx.fill();
+}
+
+function drawComet(x, y, r, sunX, sunY, distAU, maxDistAU) {
+  // Direction away from Sun
+  const dx = x - sunX, dy = y - sunY;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  const ux = dx / dist, uy = dy / dist; // unit vector away from sun
+
+  // Tail length: longer when closer to Sun (perihelion), shorter at aphelion
+  // Use inverse relationship: tailLen ∝ 1/distAU, normalised
+  const minDist = maxDistAU * (1 - 0.967) / (1 + 0.967); // approx perihelion fraction
+  const tailFrac = Math.min(1, (1 / distAU) / (1 / (maxDistAU * 0.034)));
+  const tailLen = r * (3 + tailFrac * 14);
+  const tailWidth = r * (0.7 + tailFrac * 1.2);
+
+  // --- Dust tail (broader, slightly curved-looking, yellowish-white) ---
+  const t1x = x + ux * tailLen, t1y = y + uy * tailLen;
+  // slight perpendicular spread for width
+  const px = -uy, py = ux; // perp
+  const dustGrad = ctx.createLinearGradient(x, y, t1x, t1y);
+  dustGrad.addColorStop(0, 'rgba(220,210,180,0.55)');
+  dustGrad.addColorStop(0.4, 'rgba(220,210,180,0.25)');
+  dustGrad.addColorStop(1, 'rgba(220,210,180,0)');
+  ctx.beginPath();
+  ctx.moveTo(x + px * r * 0.5, y + py * r * 0.5);
+  ctx.quadraticCurveTo(
+    x + ux * tailLen * 0.5 + px * tailWidth,
+    y + uy * tailLen * 0.5 + py * tailWidth,
+    t1x + px * tailWidth * 1.8,
+    t1y + py * tailWidth * 1.8
+  );
+  ctx.quadraticCurveTo(
+    x + ux * tailLen * 0.5 - px * tailWidth,
+    y + uy * tailLen * 0.5 - py * tailWidth,
+    x - px * r * 0.5,
+    y - py * r * 0.5
+  );
+  ctx.closePath();
+  ctx.fillStyle = dustGrad;
+  ctx.fill();
+
+  // --- Ion tail (narrower, bluer, straighter) ---
+  const ionLen = tailLen * 1.3;
+  const t2x = x + ux * ionLen, t2y = y + uy * ionLen;
+  const ionGrad = ctx.createLinearGradient(x, y, t2x, t2y);
+  ionGrad.addColorStop(0, 'rgba(140,200,255,0.5)');
+  ionGrad.addColorStop(0.5, 'rgba(140,200,255,0.2)');
+  ionGrad.addColorStop(1, 'rgba(140,200,255,0)');
+  ctx.beginPath();
+  ctx.moveTo(x + px * r * 0.3, y + py * r * 0.3);
+  ctx.lineTo(t2x + px * tailWidth * 0.5, t2y + py * tailWidth * 0.5);
+  ctx.lineTo(t2x - px * tailWidth * 0.5, t2y - py * tailWidth * 0.5);
+  ctx.lineTo(x - px * r * 0.3, y - py * r * 0.3);
+  ctx.closePath();
+  ctx.fillStyle = ionGrad;
+  ctx.fill();
+
+  // --- Nucleus (bright white-blue core) ---
+  const coreGrad = ctx.createRadialGradient(x - r*0.2, y - r*0.2, 0, x, y, r * 1.4);
+  coreGrad.addColorStop(0, 'rgba(255,255,255,1)');
+  coreGrad.addColorStop(0.4, 'rgba(200,230,255,0.9)');
+  coreGrad.addColorStop(1, 'rgba(128,200,255,0)');
+  ctx.beginPath();
+  ctx.arc(x, y, r * 1.4, 0, Math.PI * 2);
+  ctx.fillStyle = coreGrad;
+  ctx.fill();
+  // solid nucleus
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.7, 0, Math.PI * 2);
+  ctx.fillStyle = '#e8f4ff';
+  ctx.fill();
+}
+
+function drawEarth(x, y, r) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Ocean base
+  ctx.fillStyle = '#1a6fa8';
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+
+  // Continents — rough blobs
+  ctx.fillStyle = '#3a9e4a';
+  // North America
+  ctx.beginPath();
+  ctx.ellipse(x - r * 0.35, y - r * 0.2, r * 0.28, r * 0.32, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // Europe/Africa
+  ctx.beginPath();
+  ctx.ellipse(x + r * 0.1, y, r * 0.18, r * 0.42, 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  // Asia
+  ctx.beginPath();
+  ctx.ellipse(x + r * 0.38, y - r * 0.15, r * 0.3, r * 0.28, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  // Antarctica
+  ctx.beginPath();
+  ctx.ellipse(x, y + r * 0.72, r * 0.38, r * 0.18, 0, 0, Math.PI * 2);
+  ctx.fillStyle = '#ddeeff';
+  ctx.fill();
+  // Arctic
+  ctx.beginPath();
+  ctx.ellipse(x, y - r * 0.78, r * 0.32, r * 0.14, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cloud wisps
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.beginPath(); ctx.ellipse(x - r*0.1, y - r*0.45, r*0.38, r*0.09, 0.3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + r*0.2, y + r*0.3, r*0.3, r*0.08, -0.2, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x - r*0.3, y + r*0.1, r*0.22, r*0.07, 0.5, 0, Math.PI*2); ctx.fill();
+
+  ctx.restore();
+
+  // Atmosphere glow
+  const atm = ctx.createRadialGradient(x, y, r * 0.85, x, y, r * 1.25);
+  atm.addColorStop(0, 'rgba(100,180,255,0.0)');
+  atm.addColorStop(0.5, 'rgba(100,180,255,0.18)');
+  atm.addColorStop(1, 'rgba(100,180,255,0)');
+  ctx.beginPath(); ctx.arc(x, y, r * 1.25, 0, Math.PI * 2);
+  ctx.fillStyle = atm; ctx.fill();
+
+  // Shading
+  const shade = ctx.createRadialGradient(x - r*0.3, y - r*0.3, 0, x, y, r);
+  shade.addColorStop(0, 'rgba(255,255,255,0.12)');
+  shade.addColorStop(0.6, 'rgba(0,0,0,0)');
+  shade.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = shade; ctx.fill();
+}
+
+function drawVenus(x, y, r) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Base — thick sulphurous yellow-orange
+  ctx.fillStyle = '#c8a44a';
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+
+  // Cloud band layers
+  const bands = [
+    { yFrac: -0.7, h: 0.22, color: 'rgba(210,180,80,0.6)' },
+    { yFrac: -0.35, h: 0.18, color: 'rgba(180,140,50,0.5)' },
+    { yFrac: -0.1, h: 0.25, color: 'rgba(220,190,90,0.55)' },
+    { yFrac:  0.2, h: 0.20, color: 'rgba(170,130,45,0.5)' },
+    { yFrac:  0.5, h: 0.22, color: 'rgba(200,165,70,0.5)' },
+    { yFrac:  0.72, h: 0.18, color: 'rgba(180,145,55,0.45)' },
+  ];
+  for (const b of bands) {
+    ctx.fillStyle = b.color;
+    ctx.fillRect(x - r, y + b.yFrac * r, r * 2, b.h * r);
+  }
+  ctx.restore();
+
+  // Thick atmosphere glow — very prominent on Venus
+  const atm = ctx.createRadialGradient(x, y, r * 0.8, x, y, r * 1.35);
+  atm.addColorStop(0, 'rgba(220,180,60,0.0)');
+  atm.addColorStop(0.4, 'rgba(220,180,60,0.22)');
+  atm.addColorStop(1, 'rgba(220,180,60,0)');
+  ctx.beginPath(); ctx.arc(x, y, r * 1.35, 0, Math.PI * 2);
+  ctx.fillStyle = atm; ctx.fill();
+
+  const shade = ctx.createRadialGradient(x - r*0.3, y - r*0.3, 0, x, y, r);
+  shade.addColorStop(0, 'rgba(255,255,255,0.15)');
+  shade.addColorStop(0.6, 'rgba(0,0,0,0)');
+  shade.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = shade; ctx.fill();
+}
+
+function drawMercury(x, y, r) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Base — grey cratered rock
+  ctx.fillStyle = '#8a8078';
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+
+  // Subtle colour variation patches
+  const patches = [
+    { dx: -0.3, dy: -0.25, rx: 0.32, ry: 0.28, color: 'rgba(120,112,100,0.5)' },
+    { dx:  0.25, dy:  0.2,  rx: 0.28, ry: 0.25, color: 'rgba(100,95,88,0.45)' },
+    { dx: -0.1, dy:  0.35, rx: 0.22, ry: 0.2,  color: 'rgba(130,120,108,0.4)' },
+    { dx:  0.1, dy: -0.4,  rx: 0.2,  ry: 0.18, color: 'rgba(96,90,84,0.4)' },
+  ];
+  for (const p of patches) {
+    ctx.beginPath();
+    ctx.ellipse(x + p.dx*r, y + p.dy*r, p.rx*r, p.ry*r, 0, 0, Math.PI*2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+  }
+
+  // Craters — circles with a rim highlight
+  const craters = [
+    { dx: -0.25, dy: -0.3,  r: 0.14 },
+    { dx:  0.3,  dy:  0.1,  r: 0.12 },
+    { dx: -0.1,  dy:  0.3,  r: 0.10 },
+    { dx:  0.1,  dy: -0.15, r: 0.08 },
+    { dx: -0.4,  dy:  0.15, r: 0.07 },
+    { dx:  0.25, dy: -0.35, r: 0.09 },
+  ];
+  for (const c of craters) {
+    const cx2 = x + c.dx * r, cy2 = y + c.dy * r, cr = c.r * r;
+    // crater floor
+    ctx.beginPath(); ctx.arc(cx2, cy2, cr, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(60,55,50,0.55)'; ctx.fill();
+    // rim highlight
+    ctx.beginPath(); ctx.arc(cx2 - cr*0.2, cy2 - cr*0.2, cr * 1.08, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(160,150,140,0.5)'; ctx.lineWidth = r * 0.06; ctx.stroke();
+  }
+  ctx.restore();
+
+  const shade = ctx.createRadialGradient(x - r*0.3, y - r*0.3, 0, x, y, r);
+  shade.addColorStop(0, 'rgba(255,255,255,0.1)');
+  shade.addColorStop(0.6, 'rgba(0,0,0,0)');
+  shade.addColorStop(1, 'rgba(0,0,0,0.6)');
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = shade; ctx.fill();
+}
+
+function drawSaturnRing(x, y, r) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(1, 0.35); // flatten into an ellipse
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 2.1, r * 2.1, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(200,181,96,0.75)';
+  ctx.lineWidth = r * 0.55;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPlanet(x, y, r, color) {
+  const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, 0, x, y, r * 1.5);
+  g.addColorStop(0, 'rgba(255,255,255,0.3)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.beginPath();
+  ctx.arc(x, y, r * 1.5, 0, Math.PI * 2);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawOrbitPath(pts, color = 'rgba(107,138,255,0.2)') {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1 * dpr;
+  ctx.setLineDash([4 * dpr, 4 * dpr]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawFocus(x, y, label) {
+  ctx.beginPath();
+  ctx.arc(x, y, 4 * dpr, 0, Math.PI * 2);
+  ctx.fillStyle = FOCUS_COLOR;
+  ctx.fill();
+  if (label) {
+    ctx.font = `${11 * dpr}px system-ui`;
+    ctx.fillStyle = 'rgba(244,194,74,0.8)';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, x, y + 16 * dpr);
+  }
+}
+
+function drawLabel(x, y, text, color = 'rgba(255,255,255,0.5)', align = 'center') {
+  ctx.font = `${11 * dpr}px system-ui`;
+  ctx.fillStyle = color;
+  ctx.textAlign = align;
+  ctx.fillText(text, x, y);
+}
+
+function drawDashedLine(x1, y1, x2, y2, color = 'rgba(255,255,255,0.15)') {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1 * dpr;
+  ctx.setLineDash([3 * dpr, 4 * dpr]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawLine(x1, y1, x2, y2, color, width = 1) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width * dpr;
+  ctx.stroke();
+}
+
+// ---- Law 1 ----
+// Geometry: ellipse centre fixed at (cx, cy).
+// Focus F1 (star) at (cx + c, cy), Focus F2 at (cx - c, cy).
+// orbitalPos uses focus as origin. With focus at (cx+c), theta=0 → perihelion
+// is in -x direction (closest to star), theta=π → aphelion in +x direction.
+// perihelion x = (cx+c) - a(1-e) = cx + ae - a + ae = cx - a + 2ae ... let's just verify:
+// centre = focus - ae (derived: centre = (peri+aph)/2, peri=focus-a(1-e), aph=focus+a(1+e) NO)
+// CORRECT derivation (θ=0 gives min r = a(1-e), that's perihelion):
+//   peri is in direction of θ=0: peri_x = focusX + a(1-e)*cos(0) = focusX + a(1-e)
+//   aph is in direction of θ=π: aph_x = focusX + a(1+e)*cos(π) = focusX - a(1+e)
+//   centre = (peri_x + aph_x)/2 = focusX - ae
+// So to have centre=cx: focusX = cx + ae = cx + c  ✓
+// F2 is symmetric: F2x = cx - c  ✓
+// Compute the pixel scale for Law 1, based on the largest orbit in view
+function law1Scale() {
+  let maxA = ecc < 0.95 ? semiMajorA : semiMajorA; // manual mode
+  if (selectedPlanets.size > 0) {
+    maxA = Math.max(...[...selectedPlanets].map(i => PLANETS[i].a));
+  }
+  // find worst-case eccentricity for vertical constraint
+  let maxE = selectedPlanets.size > 0
+    ? Math.max(...[...selectedPlanets].map(i => PLANETS[i].e))
+    : ecc;
+  const aMaxW = W * 0.38;
+  const aMaxH = H * 0.38 / Math.sqrt(1 - maxE * maxE + 0.0001);
+  const pxPerAU = Math.min(aMaxW, aMaxH) / maxA;
+  return pxPerAU;
+}
+
+function drawLaw1() {
+  const inPlanetMode = selectedPlanets.size > 0;
+  const pxPerAU = law1Scale();
+
+  // Active orbit parameters (for labels, r1/r2, drag)
+  const activeE = inPlanetMode && activePlanet !== null ? PLANETS[activePlanet].e : ecc;
+  const activeA_AU = inPlanetMode && activePlanet !== null ? PLANETS[activePlanet].a : semiMajorA;
+  const activeA = activeA_AU * pxPerAU;
+  const activeColor = inPlanetMode && activePlanet !== null ? PLANETS[activePlanet].color : PLANET1;
+
+  // Sun position: at cx + c of active orbit so active ellipse centre = cx
+  // But if multiple planets, we fix the Sun at a consistent spot.
+  // Strategy: Sun always at cx + activeA * activeE (active orbit centred at cx)
+  const sunX = cx + activeA * activeE, sunY = cy;
+
+  // ---- Draw all selected planet orbits ----
+  if (inPlanetMode) {
+    for (const idx of selectedPlanets) {
+      const p = PLANETS[idx];
+      const a_px = p.a * pxPerAU;
+      const b_px = a_px * Math.sqrt(1 - p.e * p.e);
+      // Each planet's ellipse centre: sunX - a_px * p.e (Sun is at right focus)
+      const ellipseCX = sunX - a_px * p.e;
+      const isActive = idx === activePlanet;
+      if (showOrbitPath) {
+        ctx.beginPath();
+        ctx.ellipse(ellipseCX, sunY, a_px, b_px, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = isActive ? p.color + 'cc' : p.color + '55';
+        ctx.lineWidth = (isActive ? 1.8 : 1.2) * dpr;
+        ctx.setLineDash([8 * dpr, 5 * dpr]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+  } else {
+    // Manual mode: single orbit centred at cx
+    const a = activeA, e = activeE;
+    const b = a * Math.sqrt(1 - e * e);
+    if (showOrbitPath) {
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, a, b, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(107,138,255,0.75)';
+      ctx.lineWidth = 1.8 * dpr;
+      ctx.setLineDash([8 * dpr, 5 * dpr]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  // ---- Foci & axis annotations for active orbit ----
+  const f2X = sunX - 2 * activeA * activeE, f2Y = sunY; // second focus
+  if (showFoci) {
+    const periX = sunX + activeA * (1 - activeE);
+    const aphX  = sunX - activeA * (1 + activeE);
+    drawDashedLine(aphX, sunY, periX, sunY, 'rgba(255,255,255,0.08)');
+    const b_active = activeA * Math.sqrt(1 - activeE * activeE);
+    const activeCX = sunX - activeA * activeE;
+    drawDashedLine(activeCX, cy - b_active, activeCX, cy + b_active, 'rgba(255,255,255,0.06)');
+    drawFocus(sunX, sunY);
+    drawFocus(f2X, f2Y);
+    drawLabel(f2X, f2Y - 18 * dpr, 'F₂', FOCUS_COLOR);
+    // Perihelion marker + leader — extends right from the orbit edge
+    const periLeaderLen = 28 * dpr;
+    ctx.beginPath();
+    ctx.arc(periX, sunY, 3.5 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = PERIHELION_COLOR; ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(periX, sunY); ctx.lineTo(periX + periLeaderLen, sunY);
+    ctx.strokeStyle = PERIHELION_COLOR + '88'; ctx.lineWidth = 1 * dpr; ctx.stroke();
+    drawLabel(periX + periLeaderLen + 5 * dpr, sunY + 4 * dpr, 'Perihelion', PERIHELION_COLOR, 'left');
+
+    // Aphelion marker + leader — extends left from the orbit edge
+    const aphLeaderLen = 28 * dpr;
+    ctx.beginPath();
+    ctx.arc(aphX, sunY, 3.5 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = APHELION_COLOR; ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(aphX, sunY); ctx.lineTo(aphX - aphLeaderLen, sunY);
+    ctx.strokeStyle = APHELION_COLOR + '88'; ctx.lineWidth = 1 * dpr; ctx.stroke();
+    drawLabel(aphX - aphLeaderLen - 5 * dpr, sunY + 4 * dpr, 'Aphelion', APHELION_COLOR, 'right');
+    ctx.beginPath();
+    ctx.moveTo(aphX, cy + 54 * dpr);
+    ctx.lineTo(periX, cy + 54 * dpr);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1 * dpr;
+    ctx.stroke();
+    // End ticks
+    ctx.beginPath();
+    ctx.moveTo(aphX, cy + 48 * dpr); ctx.lineTo(aphX, cy + 60 * dpr);
+    ctx.moveTo(periX, cy + 48 * dpr); ctx.lineTo(periX, cy + 60 * dpr);
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.stroke();
+    drawLabel(sunX - activeA * activeE, cy + 72 * dpr, '2a  (major axis)', 'rgba(255,255,255,0.65)');
+  }
+
+  // ---- Draw all planet bodies ----
+  if (inPlanetMode) {
+    for (const idx of selectedPlanets) {
+      const p = PLANETS[idx];
+      const a_px = p.a * pxPerAU;
+      const thetaP = trueAnomaly((t / p.T) * 2 * Math.PI % (2 * Math.PI), p.e);
+      const posP = orbitalPos(thetaP, a_px, p.e, sunX, sunY);
+      const isActive = idx === activePlanet;
+      const pr = (isActive ? 9 : 6) * dpr;
+      if (p.name === 'Saturn') drawSaturnRing(posP.x, posP.y, pr);
+      if (p.name === 'Halley') {
+        const distAU = posP.r / pxPerAU;
+        drawComet(posP.x, posP.y, pr, sunX, sunY, distAU, p.a);
+        drawLabel(posP.x, posP.y - pr * 2.5 - 8 * dpr, "Halley's Comet", p.color + 'cc');
+      } else if (p.name === 'Jupiter') { drawJupiter(posP.x, posP.y, pr); drawLabel(posP.x, posP.y - pr - 8 * dpr, p.name, p.color + 'cc'); }
+      else if (p.name === 'Earth')   { drawEarth(posP.x, posP.y, pr);   drawLabel(posP.x, posP.y - pr - 8 * dpr, p.name, p.color + 'cc'); }
+      else if (p.name === 'Venus')   { drawVenus(posP.x, posP.y, pr);   drawLabel(posP.x, posP.y - pr - 8 * dpr, p.name, p.color + 'cc'); }
+      else if (p.name === 'Mercury') { drawMercury(posP.x, posP.y, pr); drawLabel(posP.x, posP.y - pr - 8 * dpr, p.name, p.color + 'cc'); }
+      else { drawPlanet(posP.x, posP.y, pr, p.color); drawLabel(posP.x, posP.y - pr - 8 * dpr, p.name, p.color + 'cc'); }
+    }
+  }
+
+  // ---- r1/r2 for active planet ----
+  if (showFoci) {
+    const thetaActive = inPlanetMode && activePlanet !== null
+      ? trueAnomaly((t / PLANETS[activePlanet].T) * 2 * Math.PI % (2 * Math.PI), activeE)
+      : trueAnomaly(t * 2 * Math.PI, activeE);
+    const posActive = orbitalPos(thetaActive, activeA, activeE, sunX, sunY);
+
+    if (!inPlanetMode) drawPlanet(posActive.x, posActive.y, 9 * dpr, activeColor);
+
+    drawLine(posActive.x, posActive.y, sunX, sunY, 'rgba(107,138,255,0.6)', 1.5);
+    drawLine(posActive.x, posActive.y, f2X, f2Y, 'rgba(167,139,250,0.6)', 1.5);
+
+    function labelAlongLine(x1, y1, x2, y2, text, color) {
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const px = -dy / len, py = dx / len;
+      const d1 = Math.hypot(mx - x1, my - y1);
+      const d2 = Math.hypot(mx - x2, my - y2);
+      const tooClose = Math.min(d1, d2) < 28 * dpr;
+      const side = tooClose ? 1 : -1;
+      drawLabel(mx + px * 14 * dpr * side, my + py * 14 * dpr * side, text, color);
+    }
+    labelAlongLine(posActive.x, posActive.y, sunX, sunY, 'r₁', PLANET1);
+    labelAlongLine(posActive.x, posActive.y, f2X, f2Y, 'r₂', PLANET2);
+
+    // Drag hint
+    if (isDragging) {
+      ctx.beginPath();
+      ctx.arc(posActive.x, posActive.y, 16 * dpr, 0, Math.PI * 2);
+      ctx.strokeStyle = activeColor + '88';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.stroke();
+    }
+  }
+
+  drawStar(sunX, sunY);
+  drawLabel(sunX, sunY + 32 * dpr, 'F₁ (Sun)', 'rgba(255,244,180,0.7)');
+}
+
+// ---- Law 2 Graph ----
+function drawGraph() {
+  gctx.clearRect(0, 0, GW, GH);
+  gctx.fillStyle = '#0d0f1a';
+  gctx.fillRect(0, 0, GW, GH);
+
+  const e = ecc;
+  const l2a = (law2ActivePreset !== null) ? PLANETS[law2ActivePreset].a : 1;
+  const hasReal = law2ActivePreset !== null;
+
+  const pad = { l: 56 * dpr, r: 60 * dpr, t: 14 * dpr, b: 28 * dpr };
+  const pw = GW - pad.l - pad.r;
+  const ph = GH - pad.t - pad.b;
+  const steps = 300;
+
+  // Pre-compute speed and distance across orbit
+  const dist = [], speed = [];
+  for (let i = 0; i <= steps; i++) {
+    const frac = i / steps;
+    const theta = trueAnomaly(frac * 2 * Math.PI, e);
+    const r = (1 - e * e) / (1 + e * Math.cos(theta)); // normalised to a=1
+    dist.push(r * l2a);
+    speed.push(29.78 * Math.sqrt(1 / (r * l2a)));
+  }
+
+  const distMin = Math.min(...dist), distMax = Math.max(...dist);
+  const speedMin = Math.min(...speed), speedMax = Math.max(...speed);
+
+  function xPx(frac) { return pad.l + frac * pw; }
+  function yPxDist(v)  { return pad.t + ph - ((v - distMin)  / (distMax  - distMin  || 1)) * ph; }
+  function yPxSpeed(v) { return pad.t + ph - ((v - speedMin) / (speedMax - speedMin || 1)) * ph; }
+
+  // Grid lines
+  gctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  gctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (i / 4) * ph;
+    gctx.beginPath(); gctx.moveTo(pad.l, y); gctx.lineTo(pad.l + pw, y); gctx.stroke();
+  }
+
+  // Distance curve (blue)
+  gctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const x = xPx(i / steps), y = yPxDist(dist[i]);
+    i === 0 ? gctx.moveTo(x, y) : gctx.lineTo(x, y);
+  }
+  gctx.strokeStyle = '#4f9eff';
+  gctx.lineWidth = 1.5 * dpr;
+  gctx.stroke();
+
+  // Speed curve (green)
+  gctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const x = xPx(i / steps), y = yPxSpeed(speed[i]);
+    i === 0 ? gctx.moveTo(x, y) : gctx.lineTo(x, y);
+  }
+  gctx.strokeStyle = '#34d399';
+  gctx.lineWidth = 1.5 * dpr;
+  gctx.stroke();
+
+  // Playhead
+  const px = xPx(t % 1);
+  gctx.beginPath();
+  gctx.moveTo(px, pad.t); gctx.lineTo(px, pad.t + ph);
+  gctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  gctx.lineWidth = 1.5 * dpr;
+  gctx.setLineDash([4 * dpr, 3 * dpr]);
+  gctx.stroke();
+  gctx.setLineDash([]);
+
+  // Dots on curves at playhead
+  const tFrac = t % 1;
+  const thetaNow = trueAnomaly(tFrac * 2 * Math.PI, e);
+  const rNow = (1 - e * e) / (1 + e * Math.cos(thetaNow));
+  const dNow = rNow * l2a, sNow = 29.78 * Math.sqrt(1 / (rNow * l2a));
+  gctx.beginPath(); gctx.arc(px, yPxDist(dNow), 3.5 * dpr, 0, Math.PI * 2);
+  gctx.fillStyle = '#4f9eff'; gctx.fill();
+  gctx.beginPath(); gctx.arc(px, yPxSpeed(sNow), 3.5 * dpr, 0, Math.PI * 2);
+  gctx.fillStyle = '#34d399'; gctx.fill();
+
+  const fs = 9 * dpr;
+  gctx.font = `${fs}px system-ui`;
+  const lineH = fs * 1.4;
+
+  // Left axis — distance (blue), top and bottom ticks
+  gctx.textAlign = 'right';
+  gctx.fillStyle = '#4f9eff';
+  gctx.fillText(distMax.toFixed(hasReal ? 2 : 1) + (hasReal ? ' AU' : ''), pad.l - 5 * dpr, pad.t + fs);
+  gctx.fillText(distMin.toFixed(hasReal ? 2 : 1) + (hasReal ? ' AU' : ''), pad.l - 5 * dpr, pad.t + ph);
+
+  // Right axis — speed (green), top and bottom ticks
+  gctx.textAlign = 'left';
+  gctx.fillStyle = '#34d399';
+  gctx.fillText(speedMax.toFixed(hasReal ? 1 : 2) + (hasReal ? ' km/s' : ''), pad.l + pw + 5 * dpr, pad.t + fs);
+  gctx.fillText(speedMin.toFixed(hasReal ? 1 : 2) + (hasReal ? ' km/s' : ''), pad.l + pw + 5 * dpr, pad.t + ph);
+
+  // Axis name labels — rotated, left and right sides
+  gctx.save();
+  gctx.font = `${8 * dpr}px system-ui`;
+  gctx.fillStyle = '#4f9effaa';
+  gctx.translate(pad.l - 42 * dpr, pad.t + ph / 2);
+  gctx.rotate(-Math.PI / 2);
+  gctx.textAlign = 'center';
+  gctx.fillText('distance', 0, 0);
+  gctx.restore();
+
+  gctx.save();
+  gctx.font = `${8 * dpr}px system-ui`;
+  gctx.fillStyle = '#34d399aa';
+  gctx.translate(pad.l + pw + 42 * dpr, pad.t + ph / 2);
+  gctx.rotate(Math.PI / 2);
+  gctx.textAlign = 'center';
+  gctx.fillText('speed', 0, 0);
+  gctx.restore();
+
+  // X-axis label
+  gctx.font = `${fs}px system-ui`;
+  gctx.fillStyle = 'rgba(255,255,255,0.3)';
+  gctx.textAlign = 'center';
+  gctx.fillText('Orbital phase  (0 = perihelion)', pad.l + pw / 2, GH - 4 * dpr);
+
+  // X-axis ticks
+  for (let i = 0; i <= 4; i++) {
+    const x = xPx(i / 4);
+    gctx.fillStyle = 'rgba(255,255,255,0.25)';
+    gctx.textAlign = 'center';
+    gctx.fillText(['0', '¼', '½', '¾', '1'][i], x, pad.t + ph + 10 * dpr);
+    gctx.beginPath(); gctx.moveTo(x, pad.t + ph); gctx.lineTo(x, pad.t + ph + 3 * dpr);
+    gctx.strokeStyle = 'rgba(255,255,255,0.15)'; gctx.lineWidth = 1; gctx.stroke();
+  }
+}
+
+// ---- Law 2 ----
+let areaFills = [
+  { color: 'rgba(107,138,255,0.18)', start: 0,    end: 0.08  },
+  { color: 'rgba(244,194,74,0.18)',  start: 0.42,  end: 0.5   },
+];
+
+function fillSector(starX, starY, a, e, t1, t2, color, steps = 60) {
+  ctx.beginPath();
+  ctx.moveTo(starX, starY);
+  for (let i = 0; i <= steps; i++) {
+    const frac = t1 + (t2 - t1) * i / steps;
+    const theta = trueAnomaly(frac * 2 * Math.PI, e);
+    const p = orbitalPos(theta, a, e, starX, starY);
+    ctx.lineTo(p.x, p.y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawLaw2() {
+  const aMaxW = W * 0.38;
+  const aMaxH = H * 0.38 / Math.sqrt(1 - ecc * ecc);
+  const a = Math.min(aMaxW, aMaxH);
+  const e = ecc;
+  const c = a * e;
+  const b = a * Math.sqrt(1 - e * e);
+  const starX = cx + c, starY = cy;
+  const presetPlanet = law2ActivePreset !== null ? PLANETS[law2ActivePreset] : null;
+  const orbitColor = presetPlanet ? presetPlanet.color : '#6b8aff';
+
+  if (showOrbitPath) {
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, a, b, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = orbitColor + 'bb';
+    ctx.lineWidth = 1.8 * dpr;
+    ctx.setLineDash([8 * dpr, 5 * dpr]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Draw swept areas
+  if (showAreas) {
+    const sectors = [
+      { start: 0.0,  end: 0.08, fill: 'rgba(107,138,255,0.22)', stroke: 'rgba(107,138,255,0.55)', label: 'A₁', color: PLANET1 },
+      { start: 0.42, end: 0.50, fill: 'rgba(244,194,74,0.22)',  stroke: 'rgba(244,194,74,0.55)',  label: 'A₂', color: '#f4c24a' },
+    ];
+
+    // User-placed animated sector
+    if (law2SweepStart !== null && law2SweepCurrent !== null && law2SweepCurrent > law2SweepStart) {
+      sectors.push({
+        start: law2SweepStart,
+        end: law2SweepCurrent,
+        fill: 'rgba(52,211,153,0.22)',
+        stroke: 'rgba(52,211,153,0.6)',
+        label: law2Sweeping ? '' : 'A₃',
+        color: '#34d399',
+      });
+    }
+
+    for (const sec of sectors) {
+      fillSector(starX, starY, a, e, sec.start, sec.end, sec.fill);
+      ctx.setLineDash([2 * dpr, 3 * dpr]);
+      ctx.beginPath();
+      ctx.moveTo(starX, starY);
+      for (let i = 0; i <= 60; i++) {
+        const frac = sec.start + (sec.end - sec.start) * i / 60;
+        const theta = trueAnomaly((frac % 1) * 2 * Math.PI, e);
+        const p = orbitalPos(theta, a, e, starX, starY);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = sec.stroke;
+      ctx.lineWidth = 1 * dpr;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Label at centroid
+      const midFrac = (sec.start + sec.end) / 2;
+      const midTheta = trueAnomaly((midFrac % 1) * 2 * Math.PI, e);
+      const midP = orbitalPos(midTheta, a, e, starX, starY);
+      const lx = (starX * 1 + midP.x * 2) / 3;
+      const ly = (starY * 1 + midP.y * 2) / 3;
+      ctx.font = `bold ${12 * dpr}px system-ui`;
+      ctx.fillStyle = sec.color;
+      ctx.textAlign = 'center';
+      ctx.fillText(sec.label, lx, ly);
+    }
+
+    ctx.font = `${10 * dpr}px system-ui`;
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.textAlign = 'center';
+    const eqText = law2SweepStart !== null ? 'A₁ = A₂ = A₃' : 'A₁ = A₂';
+    ctx.fillText(eqText, cx, H - 32 * dpr);
+    ctx.fillText('(equal time intervals)', cx, H - 18 * dpr);
+  }
+
+  ctx.font = `${10 * dpr}px system-ui`;
+  ctx.textAlign = 'center';
+  if (law2SweepStart === null) {
+    ctx.fillStyle = 'rgba(52,211,153,0.55)';
+    ctx.fillText('Click to sweep out an equal area from the planet\'s current position', cx, H - 50 * dpr);
+  } else if (law2Sweeping) {
+    ctx.fillStyle = 'rgba(52,211,153,0.7)';
+    ctx.fillText('Sweeping…', cx, H - 50 * dpr);
+  } else {
+    ctx.fillStyle = 'rgba(52,211,153,0.5)';
+    ctx.fillText('A₁ = A₂ = A₃  ·  Click to sweep again', cx, H - 50 * dpr);
+  }
+
+  drawStar(starX, starY);
+
+  // Velocity arrows
+  const theta = trueAnomaly(t * 2 * Math.PI, e);
+  const pos = orbitalPos(theta, a, e, starX, starY);
+  const dtheta = 0.01;
+  const pos2 = orbitalPos(trueAnomaly((t + dtheta / (2 * Math.PI)) * 2 * Math.PI, e), a, e, starX, starY);
+  const vx = (pos2.x - pos.x) * 30, vy = (pos2.y - pos.y) * 30;
+  const vlen = Math.sqrt(vx * vx + vy * vy);
+  const vscale = 50 * dpr / Math.max(vlen, 1);
+
+  // Radius line to star
+  drawLine(pos.x, pos.y, starX, starY, 'rgba(255,255,255,0.15)', 1);
+
+  // Velocity arrow
+  const ax = pos.x + vx * vscale, ay = pos.y + vy * vscale;
+  ctx.beginPath();
+  ctx.moveTo(pos.x, pos.y);
+  ctx.lineTo(ax, ay);
+  ctx.strokeStyle = '#34d399';
+  ctx.lineWidth = 2 * dpr;
+  ctx.stroke();
+  // Arrowhead
+  const angle = Math.atan2(ay - pos.y, ax - pos.x);
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(ax - 10 * dpr * Math.cos(angle - 0.4), ay - 10 * dpr * Math.sin(angle - 0.4));
+  ctx.lineTo(ax - 10 * dpr * Math.cos(angle + 0.4), ay - 10 * dpr * Math.sin(angle + 0.4));
+  ctx.closePath();
+  ctx.fillStyle = '#34d399';
+  ctx.fill();
+
+  drawLabel(ax + 12 * dpr, ay, 'v', '#34d399', 'left');
+
+  const pr2 = 9 * dpr;
+  if (presetPlanet) {
+    if (presetPlanet.name === 'Saturn')  { drawSaturnRing(pos.x, pos.y, pr2); drawPlanet(pos.x, pos.y, pr2, presetPlanet.color); }
+    else if (presetPlanet.name === 'Jupiter') drawJupiter(pos.x, pos.y, pr2);
+    else if (presetPlanet.name === 'Earth')   drawEarth(pos.x, pos.y, pr2);
+    else if (presetPlanet.name === 'Venus')   drawVenus(pos.x, pos.y, pr2);
+    else if (presetPlanet.name === 'Mercury') drawMercury(pos.x, pos.y, pr2);
+    else if (presetPlanet.name === 'Halley') {
+      const distAU = (1 - e * e) / (1 + e) * presetPlanet.a; // approx
+      drawComet(pos.x, pos.y, pr2, starX, starY, distAU, presetPlanet.a);
+    }
+    else drawPlanet(pos.x, pos.y, pr2, presetPlanet.color);
+    drawLabel(pos.x, pos.y - pr2 - 8 * dpr, presetPlanet.name, presetPlanet.color + 'cc');
+  } else {
+    drawPlanet(pos.x, pos.y, pr2, PLANET1);
+  }
+}
+
+// ---- Law 3 log-log plot ----
+function drawLogLogPlot() {
+  gctx.clearRect(0, 0, GW, GH);
+  gctx.fillStyle = '#0d0f1a';
+  gctx.fillRect(0, 0, GW, GH);
+
+  const pad = { l: 54 * dpr, r: 20 * dpr, t: 16 * dpr, b: 32 * dpr };
+  const pw = GW - pad.l - pad.r;
+  const ph = GH - pad.t - pad.b;
+
+  // All planets including outer solar system for a wider range
+  const allPlanets = [
+    ...law3Planets,
+    { name: 'Saturn',  a: 9.537,  T: 29.46,  color: '#c8b560', r: 10 },
+    { name: 'Uranus',  a: 19.19,  T: 84.01,  color: '#7de8e8', r: 9  },
+    { name: 'Neptune', a: 30.07,  T: 164.8,  color: '#4060ff', r: 9  },
+    ...(customOrbit ? [{ name: 'Custom', a: customOrbit.a, T: Math.pow(customOrbit.a, 1.5), color: '#e879f9', r: 7, custom: true }] : []),
+  ];
+
+  // Log10 ranges
+  const aMin = Math.log10(0.3), aMax = Math.log10(35);
+  const TMin = Math.log10(0.2), TMax = Math.log10(200);
+
+  function xPx(logA) { return pad.l + ((logA - aMin) / (aMax - aMin)) * pw; }
+  function yPx(logT) { return pad.t + ph - ((logT - TMin) / (TMax - TMin)) * ph; }
+
+  // Grid lines at decade values
+  gctx.font = `${9 * dpr}px system-ui`;
+  const aDecades = [0.3, 1, 3, 10, 30];
+  const TDecades = [0.2, 1, 10, 100];
+
+  for (const a of aDecades) {
+    const x = xPx(Math.log10(a));
+    gctx.beginPath(); gctx.moveTo(x, pad.t); gctx.lineTo(x, pad.t + ph);
+    gctx.strokeStyle = 'rgba(255,255,255,0.07)'; gctx.lineWidth = 1; gctx.stroke();
+    gctx.fillStyle = 'rgba(255,255,255,0.3)'; gctx.textAlign = 'center';
+    gctx.fillText(a < 1 ? a.toFixed(1) : a, x, pad.t + ph + 11 * dpr);
+  }
+  for (const T of TDecades) {
+    const y = yPx(Math.log10(T));
+    gctx.beginPath(); gctx.moveTo(pad.l, y); gctx.lineTo(pad.l + pw, y);
+    gctx.strokeStyle = 'rgba(255,255,255,0.07)'; gctx.lineWidth = 1; gctx.stroke();
+    gctx.fillStyle = 'rgba(255,255,255,0.3)'; gctx.textAlign = 'right';
+    gctx.fillText(T < 1 ? T.toFixed(1) : T, pad.l - 5 * dpr, y + 3 * dpr);
+  }
+
+  // T² = a³ reference line (slope = 3/2 on log-log)
+  const refA0 = 0.3, refA1 = 35;
+  const refX0 = xPx(Math.log10(refA0)), refX1 = xPx(Math.log10(refA1));
+  const refY0 = yPx(Math.log10(Math.pow(refA0, 1.5)));
+  const refY1 = yPx(Math.log10(Math.pow(refA1, 1.5)));
+  gctx.beginPath(); gctx.moveTo(refX0, refY0); gctx.lineTo(refX1, refY1);
+  gctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  gctx.lineWidth = 1.5 * dpr;
+  gctx.setLineDash([6 * dpr, 4 * dpr]); gctx.stroke(); gctx.setLineDash([]);
+
+  // Slope label with legend swatch — anchored at bottom-right
+  gctx.font = `${8 * dpr}px system-ui`;
+  gctx.fillStyle = 'rgba(255,255,255,0.35)';
+  gctx.textAlign = 'right';
+  const slabelX = pad.l + pw - 4 * dpr;
+  const slabelY = pad.t + ph - 6 * dpr;
+  gctx.fillText('T² = a³  (slope 3/2)', slabelX, slabelY);
+  // Small dashed swatch to the left of the text
+  const swatchW = 18 * dpr;
+  const textW = gctx.measureText('T² = a³  (slope 3/2)').width;
+  const swatchX1 = slabelX - textW - 6 * dpr;
+  const swatchX2 = swatchX1 - swatchW;
+  const swatchY = slabelY - 3 * dpr;
+  gctx.beginPath(); gctx.moveTo(swatchX2, swatchY); gctx.lineTo(swatchX1, swatchY);
+  gctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  gctx.lineWidth = 1.5 * dpr;
+  gctx.setLineDash([4 * dpr, 3 * dpr]); gctx.stroke(); gctx.setLineDash([]);
+
+  // Planet dots
+  for (const p of allPlanets) {
+    const x = xPx(Math.log10(p.a));
+    const y = yPx(Math.log10(p.T));
+
+    // Glow
+    const g = gctx.createRadialGradient(x, y, 0, x, y, 7 * dpr);
+    g.addColorStop(0, p.color + 'cc'); g.addColorStop(1, p.color + '00');
+    gctx.beginPath(); gctx.arc(x, y, 7 * dpr, 0, Math.PI * 2);
+    gctx.fillStyle = g; gctx.fill();
+
+    // Dot
+    gctx.beginPath(); gctx.arc(x, y, 4 * dpr, 0, Math.PI * 2);
+    gctx.fillStyle = p.color; gctx.fill();
+
+    // Per-planet label offsets [dx, dy, align] to avoid overlaps
+    // Draw diamond shape for custom orbit, circle for planets
+    if (p.custom) {
+      const ds = 5.5 * dpr;
+      gctx.beginPath();
+      gctx.moveTo(x, y - ds); gctx.lineTo(x + ds, y);
+      gctx.lineTo(x, y + ds); gctx.lineTo(x - ds, y);
+      gctx.closePath();
+      gctx.fillStyle = p.color; gctx.fill();
+      gctx.strokeStyle = p.color + 'cc'; gctx.lineWidth = 1 * dpr; gctx.stroke();
+    }
+
+    const labelOffsets = {
+      'Mercury': [  7, -6, 'left'  ],
+      'Venus':   [  0, 14, 'center'],
+      'Earth':   [  0, 14, 'center'],
+      'Mars':    [  7, -6, 'left'  ],
+      'Jupiter': [  7, -6, 'left'  ],
+      'Saturn':  [  7, -6, 'left'  ],
+      'Uranus':  [  7, -6, 'left'  ],
+      'Neptune': [ -7, -6, 'right' ],
+      'Custom':  [  0, 14, 'center'],
+    };
+    const [odx, ody, align] = labelOffsets[p.name] || [7, -6, 'left'];
+    gctx.font = `${p.custom ? `bold ${9 * dpr}` : `${9 * dpr}`}px system-ui`;
+    gctx.fillStyle = p.color + 'dd';
+    gctx.textAlign = align;
+    gctx.fillText(p.name, x + odx * dpr, y + ody * dpr);
+  }
+
+  // Callout for selected planet
+  if (law3SelectedPlanet) {
+    const sel = allPlanets.find(p => p.name === law3SelectedPlanet);
+    if (sel) {
+      const sx = xPx(Math.log10(sel.a));
+      const sy = yPx(Math.log10(sel.T));
+
+      const forceAbove = ['Mercury'].includes(sel.name);
+      const forceBelow = ['Uranus', 'Neptune', 'Custom'].includes(sel.name);
+      if (!sel.color) sel.color = '#e879f9';
+      const lineT = Math.pow(sel.a, 1.5);
+      const aboveLine = sel.T > lineT;
+      const calloutAbove = forceAbove ? true : forceBelow ? false : !aboveLine;
+      const boxH = 36 * dpr, boxW = 112 * dpr, boxR = 5 * dpr;
+      const stemLen = 14 * dpr;
+      const bx = Math.min(Math.max(sx - boxW / 2, pad.l), pad.l + pw - boxW);
+      const by = calloutAbove ? sy - stemLen - boxH : sy + stemLen;
+
+      // Stem
+      gctx.beginPath();
+      gctx.moveTo(sx, sy + (calloutAbove ? -6 * dpr : 6 * dpr));
+      gctx.lineTo(sx, calloutAbove ? sy - stemLen : sy + stemLen);
+      gctx.strokeStyle = sel.color + 'cc';
+      gctx.lineWidth = 1.5 * dpr;
+      gctx.stroke();
+
+      // Box
+      gctx.beginPath();
+      gctx.roundRect(bx, by, boxW, boxH, boxR);
+      gctx.fillStyle = 'rgba(14,16,28,0.92)';
+      gctx.fill();
+      gctx.strokeStyle = sel.color + '88';
+      gctx.lineWidth = 1.2 * dpr;
+      gctx.stroke();
+
+      // Text
+      gctx.font = `bold ${9 * dpr}px system-ui`;
+      gctx.fillStyle = sel.color;
+      gctx.textAlign = 'center';
+      gctx.fillText(sel.name, bx + boxW / 2, by + 13 * dpr);
+      gctx.font = `${9 * dpr}px system-ui`;
+      gctx.fillStyle = 'rgba(255,255,255,0.75)';
+      gctx.fillText(`a = ${sel.a.toFixed(3)} AU`, bx + boxW / 2, by + 24 * dpr);
+      gctx.fillText(`T = ${sel.T.toFixed(sel.T < 10 ? 3 : 2)} yr`, bx + boxW / 2, by + 35 * dpr);
+
+      // Highlight dot
+      gctx.beginPath(); gctx.arc(sx, sy, 6 * dpr, 0, Math.PI * 2);
+      gctx.strokeStyle = sel.color;
+      gctx.lineWidth = 1.5 * dpr;
+      gctx.stroke();
+    }
+  }
+
+  // Axis labels
+  gctx.font = `${9 * dpr}px system-ui`;
+  gctx.fillStyle = 'rgba(255,255,255,0.4)';
+  gctx.textAlign = 'center';
+  gctx.fillText('Semi-major axis  a  (AU)', pad.l + pw / 2, GH - 3 * dpr);
+
+  gctx.save();
+  gctx.translate(11 * dpr, pad.t + ph / 2);
+  gctx.rotate(-Math.PI / 2);
+  gctx.textAlign = 'center';
+  gctx.fillText('Period  T  (yr)', 0, 0);
+  gctx.restore();
+
+  // Title
+  gctx.font = `bold ${9 * dpr}px system-ui`;
+  gctx.fillStyle = 'rgba(255,255,255,0.5)';
+  gctx.textAlign = 'center';
+  gctx.fillText('log T  vs  log a', pad.l + pw / 2, pad.t - 2 * dpr);
+}
+
+// ---- Law 3 ----
+const law3Planets = [
+  { name: 'Mercury', a: 0.387, T: 0.241, color: '#a8a8a8', r: 5 },
+  { name: 'Venus',   a: 0.723, T: 0.615, color: '#e8c88a', r: 7 },
+  { name: 'Earth',   a: 1.000, T: 1.000, color: '#4f9eff', r: 7 },
+  { name: 'Mars',    a: 1.524, T: 1.881, color: '#e06030', r: 6 },
+  { name: 'Jupiter', a: 5.203, T: 11.86, color: '#d4a060', r: 12 },
+];
+
+function drawLaw3() {
+  const law3Ecc = [0.206, 0.007, 0.017, 0.093, 0.049];
+  const scale = Math.min(W * 0.072, H * 0.072);
+  // Sun sits at cx. Each orbit's ellipse centre = cx - c (shifted left of Sun by c).
+  // Focus (Sun) = centre + c = cx. ✓
+  const sunX = cx, sunY = cy;
+
+  // Draw orbit ellipses
+  for (let i = 0; i < law3Planets.length; i++) {
+    const p = law3Planets[i];
+    const aScaled = p.a * scale;
+    if (aScaled > W * 0.47) continue;
+    const e = law3Ecc[i];
+    const c = aScaled * e;
+    const b = aScaled * Math.sqrt(1 - e * e);
+    const ellipseCX = sunX - c; // centre of ellipse (Sun is at right focus)
+    ctx.beginPath();
+    ctx.ellipse(ellipseCX, sunY, aScaled, b, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = p.color + 'aa';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.setLineDash([6 * dpr, 4 * dpr]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  drawStar(sunX, sunY);
+
+  // Planets — focus is at sunX, so pass sunX as the focus origin
+  law3Planets.forEach((p, i) => {
+    const aScaled = p.a * scale;
+    if (aScaled > W * 0.47) return;
+    const e = law3Ecc[i];
+    const M = (t / p.T) * 2 * Math.PI;
+    const theta = trueAnomaly(M % (2 * Math.PI), e);
+    const pos = orbitalPos(theta, aScaled, e, sunX, sunY);
+    const pr = p.r * dpr;
+    if (p.name === 'Saturn')  { drawSaturnRing(pos.x, pos.y, pr); drawPlanet(pos.x, pos.y, pr, p.color); }
+    else if (p.name === 'Jupiter') drawJupiter(pos.x, pos.y, pr);
+    else if (p.name === 'Earth')   drawEarth(pos.x, pos.y, pr);
+    else if (p.name === 'Venus')   drawVenus(pos.x, pos.y, pr);
+    else if (p.name === 'Mercury') drawMercury(pos.x, pos.y, pr);
+    else drawPlanet(pos.x, pos.y, pr, p.color);
+    drawLabel(pos.x, pos.y - (p.r + 8) * dpr, p.name, p.color + 'cc');
+  });
+
+  // Custom orbit
+  if (customOrbit) {
+    const ca = customOrbit.a * scale;
+    const ce = customOrbit.e;
+    const cb = ca * Math.sqrt(1 - ce * ce);
+    const cc2 = ca * ce;
+    const coColor = '#e879f9';
+    if (ca <= W * 0.47) {
+      // Orbit ellipse
+      ctx.beginPath();
+      ctx.ellipse(sunX - cc2, sunY, ca, cb, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = coColor + 'aa';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.setLineDash([6 * dpr, 4 * dpr]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Planet body
+      const coT = Math.pow(customOrbit.a, 1.5);
+      const coM = (t / coT) * 2 * Math.PI;
+      const coTheta = trueAnomaly(coM % (2 * Math.PI), ce);
+      const coPos = orbitalPos(coTheta, ca, ce, sunX, sunY);
+      drawPlanet(coPos.x, coPos.y, 7 * dpr, coColor);
+      drawLabel(coPos.x, coPos.y - 15 * dpr, 'Custom', coColor + 'cc');
+    }
+  }
+
+}
+
+// ---- Draw Loop ----
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Starfield background
+  ctx.fillStyle = '#0d0f1a';
+  ctx.fillRect(0, 0, W, H);
+
+  // Static stars
+  const starField = getStars();
+  for (const s of starField) {
+    ctx.beginPath();
+    ctx.arc(s.x * W, s.y * H, s.r * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+    ctx.fill();
+  }
+
+  if (currentLaw === 1) drawLaw1();
+  else if (currentLaw === 2) drawLaw2();
+  else drawLaw3();
+
+  const graphCard = document.getElementById('graph-card');
+  if (graphCard) graphCard.style.display = (currentLaw === 2 || currentLaw === 3) ? '' : 'none';
+  if (currentLaw === 2) {
+    graph.height = 130 * dpr; graph.style.height = '130px';
+    GH = graph.height;
+    drawGraph();
+  }
+  if (currentLaw === 3) {
+    graph.height = 180 * dpr; graph.style.height = '180px';
+    GH = graph.height;
+    drawLogLogPlot();
+  }
+
+  // Advance sweep animation (independent of play/pause)
+  if (law2Sweeping && law2SweepCurrent !== null && law2SweepEnd !== null) {
+    law2SweepCurrent += 0.0003 * speed;
+    if (law2SweepCurrent >= law2SweepEnd) {
+      law2SweepCurrent = law2SweepEnd;
+      law2Sweeping = false;
+    }
+    if (!animId) animId = requestAnimationFrame(draw);
+  }
+
+  if (running) {
+    t += 0.0003 * speed;
+    if (t > 1) t -= 1;
+    animId = requestAnimationFrame(draw);
+  }
+  updateStats();
+}
+
+let _stars = null;
+function getStars() {
+  if (_stars) return _stars;
+  _stars = [];
+  for (let i = 0; i < 120; i++) {
+    _stars.push({ x: Math.random(), y: Math.random(), r: Math.random() * 0.8 + 0.2, a: Math.random() * 0.5 + 0.1 });
+  }
+  return _stars;
+}
+
+// ---- Stats update ----
+function updateStats() {
+  const e = ecc;
+  const a = 1;
+  const theta = trueAnomaly(t * 2 * Math.PI, e);
+  const r = a * (1 - e * e) / (1 + e * Math.cos(theta));
+  const v = Math.sqrt(1 / r); // ∝ sqrt(GM/r) in AU/yr units (normalized)
+
+  const law3Div = document.getElementById('stats-law3');
+
+  if (currentLaw === 1 && document.getElementById('sv-r1')) {
+    const inPlanetMode = selectedPlanets.size > 0 && activePlanet !== null;
+    const activeE = inPlanetMode ? PLANETS[activePlanet].e : ecc;
+    const activeA_AU = inPlanetMode ? PLANETS[activePlanet].a : semiMajorA;
+    const tScale = inPlanetMode ? PLANETS[activePlanet].T : 1;
+    const theta = trueAnomaly((t / tScale) * 2 * Math.PI, activeE);
+    const rNorm = (1 - activeE * activeE) / (1 + activeE * Math.cos(theta));
+    const rAU = rNorm * activeA_AU;
+    const r2AU = 2 * activeA_AU - rAU;
+    document.getElementById('sv-r1').textContent = rAU.toFixed(3) + ' AU';
+    document.getElementById('sv-r2').textContent = Math.max(0, r2AU).toFixed(3) + ' AU';
+    document.getElementById('sv-sum').textContent = (rAU + Math.max(0, r2AU)).toFixed(3) + ' AU';
+    document.getElementById('sv-ecc').textContent = activeE.toFixed(3);
+    const rp = activeA_AU * (1 - activeE);
+    const ra = activeA_AU * (1 + activeE);
+    const el = document.getElementById('sv-peri'); if (el) el.textContent = rp.toFixed(3) + ' AU';
+    const el2 = document.getElementById('sv-aph');  if (el2) el2.textContent = ra.toFixed(3) + ' AU';
+  }
+  if (currentLaw === 2 && document.getElementById('sv-vel')) {
+    // Use preset planet's real semi-major axis if one is selected, else label as relative
+    const l2a = (law2ActivePreset !== null) ? PLANETS[law2ActivePreset].a : null;
+    if (l2a !== null) {
+      const rAU = r * l2a; // r is normalised to a=1, scale to real AU
+      const vKms = 29.78 * Math.sqrt(1 / rAU); // v = sqrt(GM_sun / r), GM_sun = 1 AU³/yr² → km/s
+      document.getElementById('sv-vel').textContent = vKms.toFixed(1) + ' km/s';
+      document.getElementById('sv-dist').textContent = rAU.toFixed(3) + ' AU';
+    } else {
+      // No preset: show normalised values clearly
+      document.getElementById('sv-vel').textContent = v.toFixed(3) + ' (rel.)';
+      document.getElementById('sv-dist').textContent = r.toFixed(3) + ' (rel.)';
+    }
+  }
+  if (currentLaw === 3 && law3Div) {
+    // No dynamic stats needed
+  }
+}
+
+// ---- Sidebar ----
+function setSidebar() {
+  const sb = document.getElementById('sidebar');
+  const cc = document.getElementById('controls-card');
+
+  const sb2 = document.getElementById('stats-bar');
+  if (sb2) sb2.style.display = (currentLaw === 1 || currentLaw === 2) ? '' : 'none';
+  if (currentLaw === 2 && sb2) {
+    sb2.innerHTML = `
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;align-items:center">
+  <div class="stat"><div class="stat-label">Orbital speed</div><div class="stat-value accent" id="sv-vel">—</div></div>
+  <div class="stat"><div class="stat-label">Distance from Sun</div><div class="stat-value" id="sv-dist">—</div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(107,138,255,0.5)"></div>A₁ (near Sun)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(244,194,74,0.5)"></div>A₂ (far)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(52,211,153,0.5)"></div>A₃ (custom)</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <div style="font-size:0.65rem;color:var(--text2);flex:1">Select a preset for real units. Click canvas to sweep A₃.</div>
+    <button onclick="law2SweepStart=null;law2SweepEnd=null;law2SweepCurrent=null;law2Sweeping=false;if(!running)draw();" style="padding:4px 10px;border-radius:8px;font-size:0.68rem;background:var(--surface2);border:1px solid var(--border2);color:var(--text2);cursor:pointer;white-space:nowrap">Clear A₃</button>
+  </div>
+</div>`;
+  }
+  if (currentLaw === 1 && sb2) {
+    sb2.innerHTML = `
+<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;align-items:center">
+  <div class="stat"><div class="stat-label">r₁ (to F₁)</div><div class="stat-value accent" id="sv-r1">—</div></div>
+  <div class="stat"><div class="stat-label">r₂ (to F₂)</div><div class="stat-value" id="sv-r2">—</div></div>
+  <div class="stat"><div class="stat-label">r₁ + r₂ = 2a</div><div class="stat-value gold" id="sv-sum">—</div></div>
+  <div class="stat"><div class="stat-label">Eccentricity e</div><div class="stat-value" id="sv-ecc">—</div></div>
+  <div class="stat"><div class="stat-label">rₚ perihelion</div><div class="stat-value" style="color:#f97316" id="sv-peri">—</div></div>
+  <div class="stat"><div class="stat-label">rₐ aphelion</div><div class="stat-value" style="color:#38bdf8" id="sv-aph">—</div></div>
+</div>`;
+  }
+
+  // Show controls-card only for Law 1
+  if (cc) cc.style.display = currentLaw === 1 ? '' : 'none';
+  if (currentLaw === 1 && cc) {
+    const inPlanetMode = selectedPlanets.size > 0;
+    cc.innerHTML = `
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;align-items:end">
+  <div class="slider-row" style="margin:0">
+    <div class="slider-label"><span>Semi-major axis <i>a</i></span><span id="lbl-a">${semiMajorA.toFixed(2)} AU</span></div>
+    <input type="range" min="0.3" max="20" step="0.05" value="${semiMajorA}"
+      oninput="semiMajorA=+this.value;document.getElementById('lbl-a').textContent=(+this.value).toFixed(2)+' AU'"
+      id="slider-a" ${inPlanetMode ? 'disabled' : ''} style="opacity:${inPlanetMode ? '0.35' : '1'}">
+  </div>
+  <div class="slider-row" style="margin:0">
+    <div class="slider-label"><span>Eccentricity <i>e</i></span><span id="lbl-ecc">${ecc.toFixed(2)}</span></div>
+    <input type="range" min="0.01" max="0.95" step="0.01" value="${ecc}"
+      oninput="ecc=+this.value;document.getElementById('lbl-ecc').textContent=(+this.value).toFixed(2)"
+      id="slider-e" ${inPlanetMode ? 'disabled' : ''} style="opacity:${inPlanetMode ? '0.35' : '1'}">
+  </div>
+  <div>
+    <div class="toggle-row" style="margin-bottom:8px">
+      <span class="toggle-label">Show orbit</span>
+      <div class="toggle ${showOrbitPath ? 'on' : ''}" onclick="showOrbitPath=!showOrbitPath;this.classList.toggle('on')"></div>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Show foci</span>
+      <div class="toggle ${showFoci ? 'on' : ''}" onclick="showFoci=!showFoci;this.classList.toggle('on')"></div>
+    </div>
+  </div>
+  <div>
+    <div class="btn-row" style="margin-bottom:8px">
+      <button class="btn ${running ? 'active' : ''}" id="btn-play" onclick="togglePlay()">⏸ Pause</button>
+      <button class="btn" onclick="t=0">↺ Reset</button>
+    </div>
+    <div class="speed-row">
+      <span class="speed-label">Speed</span>
+      <input type="range" min="0.2" max="5" step="0.1" value="${speed}" oninput="speed=+this.value" style="flex:1;margin:0 8px">
+      <span class="speed-label" id="lbl-speed">${speed.toFixed(1)}×</span>
+    </div>
+  </div>
+</div>
+${inPlanetMode ? `<div style="font-size:0.68rem;color:var(--text2);margin-top:8px">Sliders disabled — using preset values. Clear presets to adjust manually.</div>` : ''}`;
+  }
+
+  if (currentLaw === 1) {
+    sb.innerHTML = `
+<div class="card">
+  <div class="card-title">Law I — Ellipses</div>
+  <div class="law-desc">
+    Every planet orbits the Sun in an <strong>ellipse</strong>, with the Sun at one of the two <strong>foci</strong>.
+    <span class="formula">r₁ + r₂ = 2a = constant</span>
+    The sum of distances from the planet to both foci is always equal to the major axis length.
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Perihelion &amp; Aphelion</div>
+  <div class="law-desc">
+    Distance from focus to the closest and farthest orbit points:
+    <span class="formula">r<sub>p</sub> = a(1 − e)</span>
+    <span class="formula">r<sub>a</sub> = a(1 + e)</span>
+    Note: r<sub>p</sub> + r<sub>a</sub> = 2a and r<sub>a</sub>/r<sub>p</sub> = (1+e)/(1−e).
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Planet Presets</div>
+  <div style="font-size:0.68rem;color:var(--text2);margin-bottom:8px">Toggle planets on/off. Click an active planet to focus its stats.</div>
+  <div style="display:flex;flex-wrap:wrap;gap:5px" id="planet-pills">
+    ${PLANETS.map((p,i) => `
+      <button onclick="togglePlanet(${i})" id="pill-${i}" style="
+        padding:4px 10px;border-radius:12px;font-size:0.72rem;font-weight:500;
+        border:1.5px solid ${p.color}55;background:transparent;color:${p.color}99;
+        cursor:pointer;transition:all 0.15s;
+      ">${p.name}</button>
+    `).join('')}
+  </div>
+  <button onclick="clearPlanets()" style="margin-top:8px;padding:4px 10px;border-radius:8px;font-size:0.68rem;background:var(--surface2);border:1px solid var(--border2);color:var(--text2);cursor:pointer">Clear all</button>
+</div>
+`;
+  } else if (currentLaw === 2) {
+    sb.innerHTML = `
+<div class="card">
+  <div class="card-title">Law II — Equal Areas</div>
+  <div class="law-desc">
+    A line from the Sun to the planet sweeps out <strong>equal areas</strong> in equal times.
+    <span class="formula">dA/dt = constant</span>
+    The planet moves <strong>faster</strong> near perihelion (blue) and <strong>slower</strong> near aphelion (gold) — but each sector has the same area.
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Controls</div>
+  <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">
+    ${PLANETS.map((p,i) => `<button id="l2pill-${i}" onclick="selectL2Planet(${i})" style="
+      padding:3px 9px;border-radius:12px;font-size:0.7rem;font-weight:500;
+      border:1.5px solid ${p.color}55;background:transparent;color:${p.color}99;
+      cursor:pointer;transition:all 0.15s;
+    ">${p.name}</button>`).join('')}
+  </div>
+  <div class="slider-row">
+    <div class="slider-label"><span>Eccentricity</span><span id="lbl-ecc2">${ecc.toFixed(2)}</span></div>
+    <input type="range" min="0.01" max="0.97" step="0.01" value="${ecc}" id="l2-ecc-slider"
+      oninput="ecc=+this.value;document.getElementById('lbl-ecc2').textContent=(+this.value).toFixed(2);clearL2Preset()">
+  </div>
+  <div class="toggle-row">
+    <span class="toggle-label">Show equal area sectors</span>
+    <div class="toggle ${showAreas ? 'on' : ''}" onclick="showAreas=!showAreas;this.classList.toggle('on')"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Playback</div>
+  <div class="btn-row">
+    <button class="btn ${running ? 'active' : ''}" id="btn-play" onclick="togglePlay()">⏸ Pause</button>
+    <button class="btn" onclick="t=0">↺ Reset</button>
+  </div>
+  <div class="speed-row" style="margin-top:10px">
+    <span class="speed-label">Speed</span>
+    <input type="range" min="0.2" max="5" step="0.1" value="${speed}" oninput="speed=+this.value" style="flex:1;margin:0 8px">
+    <span class="speed-label">${speed}×</span>
+  </div>
+</div>`;
+  } else {
+    const co = customOrbit || { a: 2.5, e: 0.3 };
+    const coT = Math.pow(co.a, 1.5);
+    sb.innerHTML = `
+<div class="card">
+  <div class="card-title">Law III — Harmonics</div>
+  <div class="law-desc">
+    The square of a planet's orbital period is proportional to the cube of its semi-major axis.
+    <span class="formula">T² = a³ (in AU/yr)</span>
+    Click a planet on the log-log plot to see its values.
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Custom Orbit</div>
+  <div class="slider-row">
+    <div class="slider-label"><span>Semi-major axis <i>a</i></span><span id="lbl-co-a">${co.a.toFixed(2)} AU</span></div>
+    <input type="range" min="0.1" max="32" step="0.05" value="${co.a}" id="co-a-slider"
+      oninput="updateCustomOrbit()">
+  </div>
+  <div class="slider-row">
+    <div class="slider-label"><span>Eccentricity <i>e</i></span><span id="lbl-co-e">${co.e.toFixed(2)}</span></div>
+    <input type="range" min="0.0" max="0.97" step="0.01" value="${co.e}" id="co-e-slider"
+      oninput="updateCustomOrbit()">
+  </div>
+  <div class="stat-grid" style="margin-top:8px" id="co-stats">
+    <div class="stat"><div class="stat-label">Period T</div><div class="stat-value" style="color:#e879f9" id="co-T">${coT.toFixed(3)} yr</div></div>
+    <div class="stat"><div class="stat-label">T²/a³</div><div class="stat-value" style="color:#4ade80" id="co-ratio">${(coT*coT/(co.a*co.a*co.a)).toFixed(3)}</div></div>
+  </div>
+  <div class="btn-row" style="margin-top:8px">
+    <button class="btn" onclick="customOrbit=null;if(!running)draw();setSidebar()">Clear</button>
+  </div>
+</div>
+<div class="card">
+  <div class="card-title">Playback</div>
+  <div class="btn-row">
+    <button class="btn ${running ? 'active' : ''}" id="btn-play" onclick="togglePlay()">⏸ Pause</button>
+    <button class="btn" onclick="t=0">↺ Reset</button>
+  </div>
+  <div class="speed-row" style="margin-top:10px">
+    <span class="speed-label">Speed</span>
+    <input type="range" min="0.2" max="5" step="0.1" value="${speed}" oninput="speed=+this.value" style="flex:1;margin:0 8px">
+    <span class="speed-label">${speed}×</span>
+  </div>
+</div>`;
+  }
+
+  document.querySelectorAll('input[oninput*="speed"]').forEach(el => {
+    el.addEventListener('input', () => {
+      document.querySelectorAll('#lbl-speed').forEach(l => l.textContent = speed.toFixed(1) + '×');
+    });
+  });
+}
+
+function togglePlay() {
+  running = !running;
+  const btn = document.getElementById('btn-play');
+  if (btn) btn.textContent = running ? '⏸ Pause' : '▶ Play';
+  if (btn) btn.classList.toggle('active', running);
+  if (running) { animId = requestAnimationFrame(draw); }
+  else { cancelAnimationFrame(animId); animId = null; draw(); }
+}
+
+// ---- Drag interaction for Law 1 ----
+let isDragging = false;
+let wasRunning = false;
+
+function getCanvasPointer(e) {
+  const rect = canvas.getBoundingClientRect();
+  const src = e.touches ? e.touches[0] : e;
+  return {
+    x: (src.clientX - rect.left) * dpr,
+    y: (src.clientY - rect.top) * dpr
+  };
+}
+
+function activePlanetParams() {
+  const inPlanetMode = selectedPlanets.size > 0;
+  const pxPerAU = law1Scale();
+  const e = inPlanetMode && activePlanet !== null ? PLANETS[activePlanet].e : ecc;
+  const a_AU = inPlanetMode && activePlanet !== null ? PLANETS[activePlanet].a : semiMajorA;
+  const a = a_AU * pxPerAU;
+  const starX = cx + a * e, starY = cy;
+  const tScale = inPlanetMode && activePlanet !== null ? PLANETS[activePlanet].T : 1;
+  return { e, a, starX, starY, tScale };
+}
+
+function tFromPointer(px, py) {
+  const { e, a, starX, starY, tScale } = activePlanetParams();
+  const theta = Math.atan2(py - starY, px - starX);
+  const E = 2 * Math.atan2(Math.sqrt(1 - e) * Math.sin(theta / 2),
+                            Math.sqrt(1 + e) * Math.cos(theta / 2));
+  const M = E - e * Math.sin(E);
+  // Convert mean anomaly back to global t, accounting for planet period
+  const fracOrbit = ((M / (2 * Math.PI)) % 1 + 1) % 1;
+  return fracOrbit * tScale;
+}
+
+function planetScreenPos() {
+  const { e, a, starX, starY, tScale } = activePlanetParams();
+  const theta = trueAnomaly((t / tScale) * 2 * Math.PI, e);
+  return orbitalPos(theta, a, e, starX, starY);
+}
+
+canvas.addEventListener('mousedown', e => {
+  if (currentLaw === 1) {
+    const p = getCanvasPointer(e);
+    const planet = planetScreenPos();
+    if (Math.hypot(p.x - planet.x, p.y - planet.y) < 20 * dpr) {
+      isDragging = true;
+      wasRunning = running;
+      if (running) { running = false; cancelAnimationFrame(animId); animId = null; }
+      canvas.style.cursor = 'grabbing';
+    }
+  } else if (currentLaw === 2) {
+    // Start sweep from planet's current mean anomaly fraction
+    law2SweepStart = t;
+    law2SweepEnd = t + sweepDuration;
+    law2SweepCurrent = t;
+    law2Sweeping = true;
+    if (!animId) animId = requestAnimationFrame(draw);
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (currentLaw !== 1) return;
+  if (isDragging) {
+    const p = getCanvasPointer(e);
+    t = tFromPointer(p.x, p.y);
+    draw();
+  } else {
+    // Show grab cursor when hovering near planet
+    const p = getCanvasPointer(e);
+    const planet = planetScreenPos();
+    canvas.style.cursor = Math.hypot(p.x - planet.x, p.y - planet.y) < 20 * dpr ? 'grab' : 'default';
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  if (!isDragging) return;
+  isDragging = false;
+  canvas.style.cursor = 'default';
+  if (wasRunning) { running = true; animId = requestAnimationFrame(draw); }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  if (isDragging) {
+    isDragging = false;
+    canvas.style.cursor = 'default';
+    if (wasRunning) { running = true; animId = requestAnimationFrame(draw); }
+  }
+});
+
+// Touch support
+canvas.addEventListener('touchstart', e => {
+  if (currentLaw !== 1) return;
+  const p = getCanvasPointer(e);
+  const planet = planetScreenPos();
+  if (Math.hypot(p.x - planet.x, p.y - planet.y) < 30 * dpr) {
+    isDragging = true;
+    wasRunning = running;
+    if (running) { running = false; cancelAnimationFrame(animId); animId = null; }
+    e.preventDefault();
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  if (!isDragging) return;
+  const p = getCanvasPointer(e);
+  t = tFromPointer(p.x, p.y);
+  draw();
+  e.preventDefault();
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => {
+  if (!isDragging) return;
+  isDragging = false;
+  if (wasRunning) { running = true; animId = requestAnimationFrame(draw); }
+});
+
+// ---- Graph canvas click (Law 3 planet selection) ----
+graph.addEventListener('click', e => {
+  if (currentLaw !== 3) return;
+  const rect = graph.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * dpr;
+  const my = (e.clientY - rect.top) * dpr;
+
+  const pad = { l: 54 * dpr, r: 20 * dpr, t: 16 * dpr, b: 32 * dpr };
+  const pw = GW - pad.l - pad.r;
+  const ph = GH - pad.t - pad.b;
+  const aMin = Math.log10(0.3), aMax = Math.log10(35);
+  const TMin = Math.log10(0.2), TMax = Math.log10(200);
+  function xPx(logA) { return pad.l + ((logA - aMin) / (aMax - aMin)) * pw; }
+  function yPx(logT) { return pad.t + ph - ((logT - TMin) / (TMax - TMin)) * ph; }
+
+  const allPlanets = [
+    ...law3Planets,
+    { name: 'Saturn',  a: 9.537,  T: 29.46  },
+    { name: 'Uranus',  a: 19.19,  T: 84.01  },
+    { name: 'Neptune', a: 30.07,  T: 164.8  },
+    ...(customOrbit ? [{ name: 'Custom', a: customOrbit.a, T: Math.pow(customOrbit.a, 1.5), color: '#e879f9' }] : []),
+  ];
+
+  let hit = null, hitDist = Infinity;
+  for (const p of allPlanets) {
+    const x = xPx(Math.log10(p.a));
+    const y = yPx(Math.log10(p.T));
+    const d = Math.hypot(mx - x, my - y);
+    if (d < 14 * dpr && d < hitDist) { hit = p; hitDist = d; }
+  }
+
+  law3SelectedPlanet = (hit && law3SelectedPlanet === hit.name) ? null : (hit ? hit.name : null);
+  drawLogLogPlot();
+});
+
+function togglePlanet(i) {
+  if (selectedPlanets.has(i)) {
+    if (activePlanet === i) {
+      // clicking active planet: deselect it
+      selectedPlanets.delete(i);
+      // pick a new active planet if any remain
+      activePlanet = selectedPlanets.size > 0 ? [...selectedPlanets][0] : null;
+    } else {
+      // clicking non-active selected planet: make it active
+      activePlanet = i;
+    }
+  } else {
+    selectedPlanets.add(i);
+    activePlanet = i;
+  }
+  updatePlanetPills();
+  updateManualControls();
+  if (!running) draw();
+}
+
+function clearPlanets() {
+  selectedPlanets.clear();
+  activePlanet = null;
+  updatePlanetPills();
+  updateManualControls();
+  if (!running) draw();
+}
+
+function updatePlanetPills() {
+  PLANETS.forEach((p, i) => {
+    const btn = document.getElementById('pill-' + i);
+    if (!btn) return;
+    const sel = selectedPlanets.has(i);
+    const active = activePlanet === i;
+    btn.style.background = sel ? (active ? p.color : p.color + '44') : 'transparent';
+    btn.style.color = sel ? (active ? '#fff' : p.color) : p.color + '99';
+    btn.style.borderColor = sel ? p.color : p.color + '55';
+    btn.style.outline = active ? `2px solid ${p.color}` : 'none';
+    btn.style.outlineOffset = '2px';
+  });
+}
+
+function updateManualControls() {
+  if (currentLaw === 1) setSidebar();
+}
+
+let law2ActivePreset = null;
+let law3SelectedPlanet = null; // name of clicked planet in log-log plot
+let customOrbit = { a: 2.5, e: 0.3 }; // user-defined orbit for Law 3
+
+function selectL2Planet(i) {
+  if (law2ActivePreset === i) {
+    // deselect
+    law2ActivePreset = null;
+  } else {
+    law2ActivePreset = i;
+    ecc = PLANETS[i].e;
+    const sl = document.getElementById('l2-ecc-slider');
+    if (sl) { sl.value = ecc; }
+    const lbl = document.getElementById('lbl-ecc2');
+    if (lbl) lbl.textContent = ecc.toFixed(2);
+    // reset sweep
+    law2SweepStart = null; law2SweepEnd = null; law2SweepCurrent = null; law2Sweeping = false;
+  }
+  updateL2Pills();
+  if (!running) draw();
+}
+
+function clearL2Preset() {
+  law2ActivePreset = null;
+  updateL2Pills();
+}
+
+function updateL2Pills() {
+  PLANETS.forEach((p, i) => {
+    const btn = document.getElementById('l2pill-' + i);
+    if (!btn) return;
+    const active = law2ActivePreset === i;
+    btn.style.background = active ? p.color : 'transparent';
+    btn.style.color = active ? '#fff' : p.color + '99';
+    btn.style.borderColor = active ? p.color : p.color + '55';
+  });
+}
+
+function updateCustomOrbit() {
+  const aEl = document.getElementById('co-a-slider');
+  const eEl = document.getElementById('co-e-slider');
+  if (!aEl || !eEl) return;
+  const a = +aEl.value, e = +eEl.value;
+  customOrbit = { a, e };
+  const T = Math.pow(a, 1.5);
+  const lA = document.getElementById('lbl-co-a'); if (lA) lA.textContent = a.toFixed(2) + ' AU';
+  const lE = document.getElementById('lbl-co-e'); if (lE) lE.textContent = e.toFixed(2);
+  const tEl = document.getElementById('co-T'); if (tEl) tEl.textContent = T.toFixed(3) + ' yr';
+  const rEl = document.getElementById('co-ratio'); if (rEl) rEl.textContent = (T*T/(a*a*a)).toFixed(3);
+  if (!running) draw();
+}
+
+function setLaw(n) {
+  currentLaw = n;
+  law2SweepStart = null; law2SweepEnd = null; law2SweepCurrent = null; law2Sweeping = false;
+  law2ActivePreset = null;
+  law3SelectedPlanet = null;
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', i + 1 === n));
+  setSidebar();
+  if (!running) draw();
+}
+
+function showHelpTab(i, btn) {
+  document.querySelectorAll('.help-section').forEach((el, j) => el.style.display = j === i ? '' : 'none');
+  document.querySelectorAll('.help-tab').forEach(el => el.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('help-modal').style.display = 'none';
+});
+
+// Init
+resize();
+setSidebar();
+draw();
+</script>
+</body>
+</html>
