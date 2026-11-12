@@ -1595,8 +1595,17 @@ function draw() {
   }
 
   if (running) {
-    t += 0.0003 * speed;
-    if (t > 1) t -= 1;
+    if (currentLaw === 1) {
+      // Scale advance by active planet's period so all planets feel responsive,
+      // and wrap at tScale so drag position is never clobbered by the wrap-at-1 bug
+      const inPM = selectedPlanets.size > 0 && activePlanet !== null;
+      const tMax = inPM ? PLANETS[activePlanet].T : 1;
+      t += 0.0003 * speed * tMax;
+      if (t > tMax) t -= tMax;
+    } else {
+      t += 0.0003 * speed;
+      if (t > 1) t -= 1;
+    }
     animId = requestAnimationFrame(draw);
   }
   updateStats();
@@ -2127,6 +2136,7 @@ function updateCustomOrbit() {
 
 function setLaw(n) {
   currentLaw = n;
+  t = 0;
   law2SweepStart = null; law2SweepEnd = null; law2SweepCurrent = null; law2Sweeping = false;
   law2ActivePreset = null;
   law3SelectedPlanet = null;
