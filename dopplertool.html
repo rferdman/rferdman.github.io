@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Doppler Shift — Interactive Explorer</title>
+<style>
+:root {
+  --bg:#0d0f1a; --surface:#161829; --surface2:#1e2135;
+  --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.14);
+  --text:#e8eaf4; --text2:#9196b0;
+  --accent:#6b8aff; --accent2:#a78bfa; --gold:#f4c24a;
+  --red:#ff6b6b; --green:#6bffb8; --cyan:#6be8ff;
+  --radius:10px; box-sizing:border-box; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center}
+h1{font-size:1.1rem;font-weight:500;letter-spacing:.03em}
+.subtitle{font-size:.75rem;color:var(--text2);margin-top:2px}
+.app{width:100%;max-width:1140px;padding:20px 16px 32px;display:flex;flex-direction:column;gap:16px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+.main{display:grid;grid-template-columns:1fr 300px;gap:16px}
+@media(max-width:720px){.main{grid-template-columns:1fr}}
+
+.canvas-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative;user-select:none}
+canvas{display:block;width:100%}
+#fieldCanvas{cursor:grab}
+#fieldCanvas:active{cursor:grabbing}
+#fieldCanvas.locked{cursor:default}
+.canvas-label{position:absolute;top:10px;left:14px;font-size:.7rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;pointer-events:none}
+
+.wave-panels{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.wave-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.wave-card-label{font-size:.68rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;padding:8px 12px 4px}
+
+.sidebar{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.card-title{font-size:.72rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--surface2);border-radius:8px;padding:8px 10px}
+.stat-label{font-size:.62rem;color:var(--text2);margin-bottom:3px}
+.stat-value{font-size:.95rem;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.stat-value.gold{color:var(--gold)} .stat-value.accent{color:var(--accent)}
+.stat-value.red{color:var(--red)} .stat-value.green{color:var(--green)}
+
+.slider-row{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.slider-row:last-child{margin-bottom:0}
+.slider-label{display:flex;justify-content:space-between;font-size:.72rem}
+.slider-label span:first-child{color:var(--text2)}
+.slider-label span:last-child{color:var(--text);font-weight:500}
+input[type=range]{width:100%;height:4px;-webkit-appearance:none;background:var(--border2);border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);box-shadow:0 0 0 1px var(--accent)}
+input[type=range]:disabled{opacity:0.4;cursor:not-allowed}
+
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:7px 12px;border-radius:8px;font-size:.75rem;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);transition:all .15s;display:flex;align-items:center;gap:5px}
+.btn:hover{color:var(--text);border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#5a79ee}
+.btn.danger{border-color:var(--red);color:var(--red)}
+.btn.danger:hover{background:rgba(255,107,107,.1)}
+.btn.active-toggle{background:var(--accent2);border-color:var(--accent2);color:#fff}
+
+.mode-toggle{display:flex;background:var(--surface2);border-radius:8px;padding:3px;gap:3px;margin-bottom:12px}
+.mode-btn{flex:1;padding:6px 8px;border-radius:6px;font-size:.72rem;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text2);transition:all .2s;text-align:center}
+.mode-btn.active{background:var(--accent);color:#fff}
+.mode-btn:hover:not(.active){color:var(--text)}
+
+.law-desc{font-size:.78rem;line-height:1.65;color:var(--text2)}
+.law-desc strong{color:var(--text);font-weight:500}
+.formula{display:block;margin:7px 0;padding:7px 10px;background:var(--surface2);border-left:2px solid var(--accent);border-radius:0 6px 6px 0;font-family:'Courier New',monospace;font-size:.82rem;color:var(--gold)}
+
+.shift-bar-wrap{height:6px;border-radius:3px;background:var(--surface2);margin-top:6px;overflow:hidden;position:relative}
+.shift-bar-center{position:absolute;left:50%;top:0;width:1px;height:100%;background:rgba(255,255,255,0.2)}
+.shift-bar{height:100%;border-radius:3px;transition:width .1s, background .1s}
+
+.help-tab{padding:8px 14px;font-size:.75rem;font-weight:500;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;transition:all .15s;margin-bottom:-1px}
+.help-tab:hover{color:var(--text)} .help-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.hb{background:var(--surface2);border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.hbt{font-size:.72rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+
+.drag-hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:.65rem;color:var(--text2);pointer-events:none;opacity:.7;white-space:nowrap;transition:opacity .3s}
+
+/* auto-mode motion trail badge */
+.motion-badge{position:absolute;top:10px;right:14px;font-size:.65rem;font-weight:600;color:var(--accent2);background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.3);border-radius:12px;padding:3px 9px;pointer-events:none;display:none}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<style>.law-desc math{color:var(--gold);font-size:1.0rem}.law-desc math[display="block"]{display:block}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <h1>Doppler Shift</h1>
+    <div class="subtitle">Interactive wave explorer · Year 1 Astrophysics</div>
+  </div>
+  <button onclick="document.getElementById('hmodal').style.display='flex'" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:.85rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">?</button>
+</div>
+
+<!-- HELP MODAL -->
+<div id="hmodal" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;max-width:640px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.5)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+      <div><div style="font-size:1rem;font-weight:600">User Guide</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px">Doppler Shift Interactive Explorer</div></div>
+      <button onclick="document.getElementById('hmodal').style.display='none'" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+    <div style="overflow-y:auto;padding:20px;flex:1;font-size:.82rem;line-height:1.75;color:var(--text2)">
+      <div class="hb">
+        <div class="hbt">What is the Doppler Effect?</div>
+        <p>When a source of waves moves relative to an observer, the observed frequency differs from the emitted frequency. Motion toward the observer <strong style="color:var(--cyan)">compresses</strong> the wavefronts (blueshift), while motion away <strong style="color:var(--red)">stretches</strong> them (redshift).</p>
+      </div>
+      <div class="hb">
+        <div class="hbt">The Doppler Formula</div>
+        <p>For a moving source (observer at rest):</p>
+        <code class="formula" style="display:block;margin:8px 0">f_obs = f_src × v_wave / (v_wave ∓ v_src)</code>
+        <p>where − applies when source approaches and + when it recedes. For light (non-relativistic):</p>
+        <code class="formula" style="display:block;margin:8px 0">Δλ/λ = v_r / c</code>
+        <p>Positive Δλ/λ = redshift; negative = blueshift.</p>
+      </div>
+      <div class="hb">
+        <div class="hbt">Manual Mode</div>
+        <ul style="padding-left:1.2em;display:flex;flex-direction:column;gap:6px">
+          <li>Drag the <strong style="color:#f4c24a">★ Source</strong> and <strong style="color:#6b8aff">◆ Observer</strong> freely anywhere in the field.</li>
+          <li>Use <strong>Play/Pause</strong> to start and stop wave emission.</li>
+          <li>Adjust emission frequency and wave speed with the sliders.</li>
+        </ul>
+      </div>
+      <div class="hb">
+        <div class="hbt">Auto-Motion Mode</div>
+        <ul style="padding-left:1.2em;display:flex;flex-direction:column;gap:6px">
+          <li>The source starts at the left edge and moves steadily toward the observer.</li>
+          <li>The observer is locked at the right-centre of the field.</li>
+          <li>Use the <strong>Source Speed</strong> slider to control how fast it moves.</li>
+          <li>Watch the wavefronts compress ahead of the source (blueshift) and stretch behind it (redshift). After passing the observer the shift flips sign.</li>
+          <li>Reset returns the source to the starting position.</li>
+        </ul>
+      </div>
+      <div class="hb">
+        <div class="hbt">Astronomical Context</div>
+        <p>The Doppler effect is fundamental in astrophysics — used to measure radial velocities of stars and galaxies, detect exoplanets, and discover binary systems. Redshifted spectra from distant galaxies provided the first evidence for the expansion of the Universe.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="main">
+  <div style="display:flex;flex-direction:column;gap:12px">
+
+    <!-- Main field -->
+    <div class="canvas-card" style="height:340px">
+      <div class="canvas-label">Wave Propagation Field</div>
+      <div class="motion-badge" id="motionBadge">AUTO MOTION</div>
+      <canvas id="fieldCanvas" style="height:340px"></canvas>
+      <div class="drag-hint" id="dragHint">Drag ★ source and ◆ observer to reposition</div>
+    </div>
+
+    <!-- Wave panels -->
+    <div class="wave-panels">
+      <div class="wave-card">
+        <div class="wave-card-label" style="color:var(--gold)">★ At Source (emitted)</div>
+        <canvas id="srcWave" height="70" style="height:70px"></canvas>
+      </div>
+      <div class="wave-card">
+        <div class="wave-card-label" style="color:var(--accent)">◆ At Observer (received)</div>
+        <canvas id="obsWave" height="70" style="height:70px"></canvas>
+      </div>
+    </div>
+
+    <!-- Frequency vs time graph (auto mode only) -->
+    <div class="wave-card" id="freqGraphCard" style="border-radius:var(--radius);display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px 2px">
+        <div class="wave-card-label" style="padding:0;color:var(--text2)">Observed Frequency vs Time</div>
+        <div style="display:flex;align-items:center;gap:12px;font-size:.65rem;color:var(--text2)">
+          <span style="display:flex;align-items:center;gap:4px"><svg width="18" height="6" style="flex-shrink:0"><line x1="0" y1="3" x2="18" y2="3" stroke="#f4c24a" stroke-width="1.5" stroke-dasharray="4,3"/></svg>emitted</span>
+        </div>
+      </div>
+      <canvas id="freqGraph" height="90" style="height:90px"></canvas>
+    </div>
+
+    <!-- Measurements — single horizontal bar -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px">
+      <div style="display:flex;align-items:center;gap:0;flex-wrap:nowrap">
+        <!-- emitted -->
+        <div style="flex:1;min-width:0;text-align:center">
+          <div style="font-size:.6rem;color:var(--text2);margin-bottom:1px">f emitted</div>
+          <div style="font-size:.88rem;font-weight:600;color:var(--gold);font-variant-numeric:tabular-nums" id="statFsrc">1.00 Hz</div>
+        </div>
+        <div style="width:1px;background:var(--border2);align-self:stretch;margin:0 4px"></div>
+        <!-- observed -->
+        <div style="flex:1;min-width:0;text-align:center">
+          <div style="font-size:.6rem;color:var(--text2);margin-bottom:1px">f observed</div>
+          <div style="font-size:.88rem;font-weight:600;font-variant-numeric:tabular-nums" id="statFobs" class="stat-value">— Hz</div>
+        </div>
+        <div style="width:1px;background:var(--border2);align-self:stretch;margin:0 4px"></div>
+        <!-- delta f/f -->
+        <div style="flex:1;min-width:0;text-align:center">
+          <div style="font-size:.6rem;color:var(--text2);margin-bottom:1px">Δf / f</div>
+          <div style="font-size:.88rem;font-weight:600;font-variant-numeric:tabular-nums" id="statShift" class="stat-value">—</div>
+        </div>
+        <div style="width:1px;background:var(--border2);align-self:stretch;margin:0 4px"></div>
+        <!-- separation -->
+        <div style="flex:1;min-width:0;text-align:center">
+          <div style="font-size:.6rem;color:var(--text2);margin-bottom:1px">separation</div>
+          <div style="font-size:.88rem;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums" id="statDist">— px</div>
+        </div>
+        <!-- auto: theoretical -->
+        <div id="theoRow" style="display:none;width:1px;background:var(--border2);align-self:stretch;margin:0 4px"></div>
+        <div id="theoCell" style="display:none;flex:1;min-width:0;text-align:center">
+          <div style="font-size:.6rem;color:var(--text2);margin-bottom:1px">f theoretical</div>
+          <div style="font-size:.88rem;font-weight:600;font-variant-numeric:tabular-nums;color:var(--accent2)" id="statTheo">— Hz</div>
+        </div>
+      </div>
+      <!-- shift bar -->
+      <div style="margin-top:7px">
+        <div style="display:flex;justify-content:space-between;font-size:.6rem;margin-bottom:3px">
+          <span style="color:var(--cyan)">← Blue</span>
+          <span style="color:var(--text2)">No shift</span>
+          <span style="color:var(--red)">Red →</span>
+        </div>
+        <div class="shift-bar-wrap">
+          <div class="shift-bar-center"></div>
+          <div class="shift-bar" id="shiftBar" style="width:2px;margin-left:49%;background:var(--text2)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- Physics -->
+    <div class="card" id="physicsCard"></div>
+
+    <!-- Mode selector -->
+    <div class="card">
+      <div class="card-title">Mode</div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="modeManual" onclick="setMode('manual')">✋ Manual</button>
+        <button class="mode-btn" id="modeAuto" onclick="setMode('auto')">▷ Auto Motion</button>
+      </div>
+
+      <!-- Playback -->
+      <div class="btn-row" style="margin-bottom:12px">
+        <button class="btn primary" id="playBtn" onclick="togglePlay()">▶ Play</button>
+        <button class="btn danger" onclick="resetSim()">↺ Reset</button>
+      </div>
+      <div class="slider-row">
+        <div class="slider-label">
+          <span>Emission Frequency</span>
+          <span id="freqLabel">1.0 Hz</span>
+        </div>
+        <input type="range" id="freqSlider" min="0.3" max="3.0" step="0.1" value="1.0" oninput="onFreqChange(this.value)">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label">
+          <span>Wave Speed</span>
+          <span id="speedLabel">150 px/s</span>
+        </div>
+        <input type="range" id="speedSlider" min="60" max="300" step="10" value="150" oninput="onSpeedChange(this.value)">
+      </div>
+      <!-- Auto-mode source speed (hidden in manual mode) -->
+      <div class="slider-row" id="srcSpeedRow" style="display:none">
+        <div class="slider-label">
+          <span>Source Speed</span>
+          <span id="srcSpeedLabel">60 px/s</span>
+        </div>
+        <input type="range" id="srcSpeedSlider" min="10" max="260" step="10" value="60" oninput="onSrcSpeedChange(this.value)">
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+// ─── KaTeX helper (deferred, matches Kepler tool) ─────────────────────────────
+let _mathId = 0;
+function tex(latex, display=false) {
+  const id = 'ktx-' + (_mathId++);
+  tex._pending = tex._pending || {};
+  tex._pending[id] = { latex, display };
+  if (display) {
+    return `<div style="margin:10px 0;padding:9px 14px;background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;overflow-x:auto"><span id="${id}"></span></div>`;
+  }
+  return `<span id="${id}" style="display:inline"></span>`;
+}
+function renderMath() {
+  const pending = tex._pending || {};
+  for (const [id, {latex, display}] of Object.entries(pending)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    try { katex.render(latex, el, { throwOnError:false, displayMode:display, output:'mathml' }); } catch(e) {}
+    delete pending[id];
+  }
+}
+
+function renderPhysics() {
+  document.getElementById('physicsCard').innerHTML = `
+    <div class="card-title">The Doppler Effect</div>
+    <div class="law-desc">
+      For a stationary observer and moving source:
+      ${tex('f_{\\mathrm{obs}} = f_{\\mathrm{src}}\\,\\dfrac{v}{v \\mp v_{\\mathrm{src}}}', true)}
+      where ${tex('\\mp')} applies as − (approach) or + (recession).
+      Only the <strong>radial component</strong> of source velocity creates a shift — tangential motion has no effect.
+      ${tex('z = \\dfrac{\\Delta\\lambda}{\\lambda} = \\dfrac{\\Delta f}{f}', true)}
+      In astronomy, ${tex('z > 0')} is redshift (recession) and ${tex('z < 0')} is blueshift (approach).
+    </div>
+  `;
+  renderMath();
+}
+
+// ─── Canvas refs ──────────────────────────────────────────────────────────────
+const fieldCanvas = document.getElementById('fieldCanvas');
+const ctx = fieldCanvas.getContext('2d');
+const srcWaveCanvas = document.getElementById('srcWave');
+const sctx = srcWaveCanvas.getContext('2d');
+const obsWaveCanvas = document.getElementById('obsWave');
+const octx = obsWaveCanvas.getContext('2d');
+const freqGraphCanvas = document.getElementById('freqGraph');
+const fgctx = freqGraphCanvas.getContext('2d');
+
+let W = 0, H = 0;
+let playing = false;
+let lastTime = null;
+let simTime = 0;
+
+// ─── Mode ─────────────────────────────────────────────────────────────────────
+let mode = 'manual'; // 'manual' | 'auto'
+
+// ─── Positions ────────────────────────────────────────────────────────────────
+let src = {nx: 0.35, ny: 0.5};
+let obs = {nx: 0.78, ny: 0.5};
+
+// Auto-motion state
+let srcSpeedPx = 60;        // px/s in logical (non-DPR) units
+const AUTO_OBS_NX = 0.50;
+const AUTO_OBS_NY = 0.50;
+const AUTO_SRC_START_NX = 0.04;
+
+// ─── Parameters ───────────────────────────────────────────────────────────────
+let emitFreq = 1.0;
+let waveSpeed = 150;
+
+// ─── Wavefronts ───────────────────────────────────────────────────────────────
+let wavefronts = [];
+let nextEmit = 0;
+let emitInterval = 1 / emitFreq;
+
+// ─── Histories ────────────────────────────────────────────────────────────────
+const OBS_HIST = 200;
+let obsHistory = new Array(OBS_HIST).fill(0);
+let srcHistory = new Array(OBS_HIST).fill(0);
+let srcPhase = 0;
+let obsPhase = 0;   // drives observer wave display independently
+
+// frequency measurement — geometric wavefront arrivals
+let obsFreqMeasured = null;
+let arrivalTimes = [];          // simTime of each wavefront passing the observer
+let wfPassed = new Set();       // ids of wavefronts already counted
+let wfIdCounter = 0;
+let obsAmp = 0, obsAmpTarget = 0;
+
+// ─── Frequency history (for f-vs-t graph) ────────────────────────────────────
+const FREQ_HIST = 300;
+// each entry: {t, fobs} — fobs null until measured
+let freqHistory = [];
+
+// ─── Drag ─────────────────────────────────────────────────────────────────────
+let dragging = null;
+
+function markerPx(m) { return {x: m.nx * W, y: m.ny * H}; }
+function hitTest(mx, my, m, r) {
+  const p = markerPx(m);
+  return Math.hypot(mx - p.x, my - p.y) < r;
+}
+function getCanvasXY(e) {
+  const rect = fieldCanvas.getBoundingClientRect();
+  const scaleX = W / rect.width, scaleY = H / rect.height;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY};
+}
+
+function onPointerDown(e) {
+  if (mode === 'auto') return; // locked
+  const {x, y} = getCanvasXY(e);
+  const HIT = 22 * window.devicePixelRatio;
+  if (hitTest(x, y, src, HIT)) dragging = 'src';
+  else if (hitTest(x, y, obs, HIT)) dragging = 'obs';
+  if (dragging) e.preventDefault();
+}
+function onPointerMove(e) {
+  if (!dragging) return;
+  e.preventDefault();
+  const {x, y} = getCanvasXY(e);
+  const m = dragging === 'src' ? src : obs;
+  m.nx = Math.max(0.03, Math.min(0.97, x / W));
+  m.ny = Math.max(0.05, Math.min(0.95, y / H));
+}
+function onPointerUp() { dragging = null; }
+
+fieldCanvas.addEventListener('mousedown', onPointerDown);
+fieldCanvas.addEventListener('mousemove', onPointerMove);
+fieldCanvas.addEventListener('mouseup', onPointerUp);
+fieldCanvas.addEventListener('touchstart', onPointerDown, {passive:false});
+fieldCanvas.addEventListener('touchmove', onPointerMove, {passive:false});
+fieldCanvas.addEventListener('touchend', onPointerUp);
+
+// ─── Mode switching ───────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeManual').classList.toggle('active', m === 'manual');
+  document.getElementById('modeAuto').classList.toggle('active', m === 'auto');
+  document.getElementById('srcSpeedRow').style.display = m === 'auto' ? '' : 'none';
+  document.getElementById('theoRow').style.display = m === 'auto' ? '' : 'none';
+  document.getElementById('theoCell').style.display = m === 'auto' ? '' : 'none';
+  document.getElementById('motionBadge').style.display = m === 'auto' ? '' : 'none';
+  document.getElementById('dragHint').style.opacity = m === 'auto' ? '0' : '0.7';
+  document.getElementById('freqGraphCard').style.display = m === 'auto' ? '' : 'none';
+  fieldCanvas.classList.toggle('locked', m === 'auto');
+  // Re-run resize so the freq graph canvas gets proper dimensions after being shown
+  requestAnimationFrame(resize);
+  resetSim();
+}
+
+// ─── Controls ─────────────────────────────────────────────────────────────────
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('playBtn').textContent = playing ? '⏸ Pause' : '▶ Play';
+  if (playing && lastTime === null) lastTime = performance.now();
+}
+
+function resetSim() {
+  wavefronts = [];
+  nextEmit = 0;
+  simTime = 0;
+  lastTime = null;
+  srcHistory.fill(0);
+  obsHistory.fill(0);
+  srcPhase = 0;
+  obsPhase = 0;
+  arrivalTimes = [];
+  wfPassed = new Set();
+  wfIdCounter = 0;
+  obsFreqMeasured = null;
+  obsAmp = 0; obsAmpTarget = 0;
+  freqHistory = [];
+
+  if (mode === 'auto') {
+    src = {nx: AUTO_SRC_START_NX, ny: AUTO_OBS_NY};
+    obs = {nx: AUTO_OBS_NX, ny: AUTO_OBS_NY};
+  } else {
+    src = {nx: 0.35, ny: 0.5};
+    obs = {nx: 0.72, ny: 0.5};
+  }
+  if (playing) { playing = false; document.getElementById('playBtn').textContent = '▶ Play'; }
+  updateStats();
+}
+
+function onFreqChange(v) {
+  emitFreq = parseFloat(v);
+  emitInterval = 1 / emitFreq;
+  document.getElementById('freqLabel').textContent = emitFreq.toFixed(1) + ' Hz';
+  document.getElementById('statFsrc').textContent = emitFreq.toFixed(2) + ' Hz';
+}
+function onSpeedChange(v) {
+  waveSpeed = parseInt(v);
+  document.getElementById('speedLabel').textContent = waveSpeed + ' px/s';
+}
+function onSrcSpeedChange(v) {
+  srcSpeedPx = parseInt(v);
+  document.getElementById('srcSpeedLabel').textContent = srcSpeedPx + ' px/s';
+}
+
+// ─── Resize ───────────────────────────────────────────────────────────────────
+function resize() {
+  const rect = fieldCanvas.parentElement.getBoundingClientRect();
+  W = rect.width * window.devicePixelRatio;
+  H = 340 * window.devicePixelRatio;
+  fieldCanvas.width = W; fieldCanvas.height = H;
+  fieldCanvas.style.width = rect.width + 'px';
+  fieldCanvas.style.height = '340px';
+
+  const sw = srcWaveCanvas.parentElement.getBoundingClientRect().width;
+  srcWaveCanvas.width = sw * window.devicePixelRatio;
+  srcWaveCanvas.height = 70 * window.devicePixelRatio;
+  srcWaveCanvas.style.width = sw + 'px'; srcWaveCanvas.style.height = '70px';
+  obsWaveCanvas.width = sw * window.devicePixelRatio;
+  obsWaveCanvas.height = 70 * window.devicePixelRatio;
+  obsWaveCanvas.style.width = sw + 'px'; obsWaveCanvas.style.height = '70px';
+
+  const fw = freqGraphCanvas.parentElement.getBoundingClientRect().width;
+  freqGraphCanvas.width = fw * window.devicePixelRatio;
+  freqGraphCanvas.height = 90 * window.devicePixelRatio;
+  freqGraphCanvas.style.width = fw + 'px'; freqGraphCanvas.style.height = '90px';
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── Simulation ───────────────────────────────────────────────────────────────
+function step(ts) {
+  if (!lastTime) lastTime = ts;
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+
+  if (playing) {
+    simTime += dt;
+    srcPhase += emitFreq * dt * Math.PI * 2;
+
+    // Auto motion: move source across; stop when it exits the right edge
+    if (mode === 'auto') {
+      const stepNx = (srcSpeedPx * dt) / (W / window.devicePixelRatio);
+      src.nx += stepNx;
+      src.ny = AUTO_OBS_NY;
+      obs.nx = AUTO_OBS_NX;
+      obs.ny = AUTO_OBS_NY;
+      if (src.nx > 1.0) {
+        src.nx = 1.0;
+        playing = false;
+        document.getElementById('playBtn').textContent = '▶ Play';
+      }
+    }
+
+    // Emit wavefronts
+    while (simTime >= nextEmit) {
+      const p = markerPx(src);
+      wavefronts.push({x: p.x, y: p.y, r: 0, id: wfIdCounter++});
+      nextEmit += emitInterval;
+    }
+
+    // Grow wavefronts
+    for (const wf of wavefronts) wf.r += waveSpeed * dt * window.devicePixelRatio;
+
+    // Prune
+    const maxR = Math.hypot(W, H) * 1.2;
+    wavefronts = wavefronts.filter(wf => wf.r < maxR);
+
+    // ── Geometric wavefront-arrival detection ────────────────────────────────
+    // A wavefront "arrives" at the observer the moment its radius equals the
+    // distance from its emission point to the observer. We detect the crossing
+    // each frame by checking sign change of (r - dist_to_obs).
+    const op = markerPx(obs);
+    for (const wf of wavefronts) {
+      if (wfPassed.has(wf.id)) continue;
+      const dToObs = Math.hypot(op.x - wf.x, op.y - wf.y);
+      if (wf.r >= dToObs) {
+        wfPassed.add(wf.id);
+        arrivalTimes.push(simTime);
+        if (arrivalTimes.length > 10) arrivalTimes.shift();
+        // Update measured frequency from last inter-arrival interval
+        if (arrivalTimes.length >= 2) {
+          const lastInterval = arrivalTimes[arrivalTimes.length-1] - arrivalTimes[arrivalTimes.length-2];
+          obsFreqMeasured = lastInterval > 0 ? 1 / lastInterval : null;
+        }
+      }
+    }
+
+    // Only drive observer wave after the first wavefront has actually arrived —
+    // before that the observer hears nothing (travel-time lag).
+    if (arrivalTimes.length >= 1) {
+      const fDrive = (obsFreqMeasured && isFinite(obsFreqMeasured)) ? obsFreqMeasured : emitFreq;
+      obsPhase += fDrive * dt * Math.PI * 2;
+    }
+
+    // For the freq graph and stats use the instantaneous analytic value
+    const fInst = instantFobs();
+
+    obsAmpTarget = arrivalTimes.length >= 1 ? 0.9 : 0;
+    obsAmp += (obsAmpTarget - obsAmp) * 0.05;
+
+    obsHistory.copyWithin(0, 1);
+    obsHistory[OBS_HIST - 1] = arrivalTimes.length >= 1 ? Math.sin(obsPhase) * obsAmp : 0;
+    srcHistory.copyWithin(0, 1);
+    srcHistory[OBS_HIST - 1] = Math.sin(srcPhase);
+
+    // Only record observed frequency after first wavefront has arrived
+    freqHistory.push({t: simTime, fobs: arrivalTimes.length >= 1 ? fInst : null});
+    if (mode !== 'auto' && freqHistory.length > FREQ_HIST) freqHistory.shift();
+
+    updateStats();
+  }
+
+  draw();
+  drawWaves();
+  drawFreqGraph();
+  requestAnimationFrame(step);
+}
+
+// ─── Instantaneous Doppler frequency ─────────────────────────────────────────
+// Works for both modes. In manual mode the source is stationary so vr = 0
+// and f_obs = f_emitted exactly. In auto mode the source moves horizontally
+// so vr = (radial component of source velocity toward observer).
+function instantFobs() {
+  if (mode === 'manual') return emitFreq; // source stationary → no shift
+  const sp = markerPx(src);
+  const op = markerPx(obs);
+  const dx = op.x - sp.x;
+  const dy = op.y - sp.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 0.5) return emitFreq; // at coincidence, treat as no shift
+  // source velocity is purely +x; radial component toward obs = dot(v̂_src, r̂_obs)
+  // r̂ from src to obs = (dx, dy)/dist; v_src = (+srcSpeedPx, 0)
+  const vr = (dx / dist) * srcSpeedPx; // positive = approaching
+  const vw = waveSpeed;
+  if (vr >= vw) return null; // supersonic
+  return emitFreq * vw / (vw - vr);
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function updateStats() {
+  const sp = markerPx(src);
+  const op = markerPx(obs);
+  const dist = Math.hypot(op.x - sp.x, op.y - sp.y) / window.devicePixelRatio;
+  document.getElementById('statDist').textContent = dist.toFixed(0) + ' px';
+  document.getElementById('statFsrc').textContent = emitFreq.toFixed(2) + ' Hz';
+
+  // Theoretical for auto mode sidebar display
+  if (mode === 'auto') {
+    const ft = instantFobs();
+    document.getElementById('statTheo').textContent = ft !== null ? ft.toFixed(2) + ' Hz' : 'supersonic';
+  }
+
+  // In manual mode use the measured inter-arrival frequency (reflects actual
+  // wavefront spacing at the observer). In auto mode use the analytic value.
+  let fobs = null;
+  if (playing) {
+    if (mode === 'manual') {
+      fobs = (obsFreqMeasured && isFinite(obsFreqMeasured) && arrivalTimes.length >= 2) ? obsFreqMeasured : null;
+    } else {
+      fobs = instantFobs();
+    }
+  }
+  const shift = fobs !== null ? (fobs - emitFreq) / emitFreq : null;
+
+  const bar = document.getElementById('shiftBar');
+  if (fobs !== null) {
+    const el = document.getElementById('statFobs');
+    el.textContent = fobs.toFixed(2) + ' Hz';
+    // shift > 0 → fobs > femit → blueshift (source approaching)
+    // shift < 0 → fobs < femit → redshift  (source receding)
+    el.className = 'stat-value ' + (shift > 0.02 ? 'accent' : shift < -0.02 ? 'red' : '');
+
+    const shiftEl = document.getElementById('statShift');
+    shiftEl.textContent = (shift >= 0 ? '+' : '') + (shift * 100).toFixed(1) + '%';
+    shiftEl.className = 'stat-value ' + (shift > 0.02 ? 'accent' : shift < -0.02 ? 'red' : '');
+
+    // Bar grows left (blue, approach) or right (red, recession) from centre.
+    const clampedShift = Math.max(-0.6, Math.min(0.6, shift));
+    const halfPct = Math.abs(clampedShift) / 0.6 * 50;
+    if (clampedShift > 0.01) {
+      // Blueshift: bar grows leftward from centre
+      bar.style.width = halfPct + '%';
+      bar.style.marginLeft = (50 - halfPct) + '%';
+      bar.style.background = 'var(--cyan)';
+    } else if (clampedShift < -0.01) {
+      // Redshift: bar grows rightward from centre
+      bar.style.width = halfPct + '%';
+      bar.style.marginLeft = '50%';
+      bar.style.background = 'var(--red)';
+    } else {
+      bar.style.width = '2px';
+      bar.style.marginLeft = '49%';
+      bar.style.background = 'var(--text2)';
+    }
+  } else {
+    document.getElementById('statFobs').textContent = '— Hz';
+    document.getElementById('statFobs').className = 'stat-value';
+    document.getElementById('statShift').textContent = '—';
+    document.getElementById('statShift').className = 'stat-value';
+    bar.style.width = '2px'; bar.style.marginLeft = '49%'; bar.style.background = 'var(--text2)';
+  }
+}
+
+// ─── Drawing ──────────────────────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  const grid = 40 * window.devicePixelRatio;
+  for (let x = 0; x < W; x += grid) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += grid) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  const sp = markerPx(src);
+  const op = markerPx(obs);
+
+  // Auto mode: draw source trajectory line
+  if (mode === 'auto') {
+    ctx.beginPath();
+    ctx.moveTo(0, op.y);
+    ctx.lineTo(W, op.y);
+    ctx.strokeStyle = 'rgba(167,139,250,0.08)';
+    ctx.lineWidth = 1 * window.devicePixelRatio;
+    ctx.setLineDash([4*window.devicePixelRatio, 8*window.devicePixelRatio]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Motion arrow (ahead of source)
+    if (src.nx < 0.95) {
+      const ax = sp.x + 28 * window.devicePixelRatio;
+      const ay = sp.y;
+      ctx.beginPath();
+      ctx.moveTo(sp.x + 22*window.devicePixelRatio, ay);
+      ctx.lineTo(ax, ay);
+      ctx.strokeStyle = 'rgba(167,139,250,0.5)';
+      ctx.lineWidth = 1.5 * window.devicePixelRatio;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ax, ay - 4*window.devicePixelRatio);
+      ctx.lineTo(ax + 7*window.devicePixelRatio, ay);
+      ctx.lineTo(ax, ay + 4*window.devicePixelRatio);
+      ctx.fillStyle = 'rgba(167,139,250,0.5)';
+      ctx.fill();
+    }
+  }
+
+  // Wavefronts
+  for (const wf of wavefronts) {
+    const dToObs = Math.hypot(op.x - wf.x, op.y - wf.y);
+    const proximity = Math.abs(wf.r - dToObs) / window.devicePixelRatio;
+    const alpha = Math.max(0, 0.55 - wf.r / (Math.hypot(W, H) * 0.9));
+
+    ctx.beginPath();
+    ctx.arc(wf.x, wf.y, wf.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(107,138,255,${alpha.toFixed(2)})`;
+    ctx.lineWidth = 1.5 * window.devicePixelRatio;
+    ctx.stroke();
+
+    if (proximity < 10) {
+      const glowAlpha = (1 - proximity / 10) * 0.8;
+      ctx.beginPath();
+      ctx.arc(wf.x, wf.y, wf.r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(107,232,255,${glowAlpha.toFixed(2)})`;
+      ctx.lineWidth = 3 * window.devicePixelRatio;
+      ctx.stroke();
+    }
+  }
+
+  // Dashed line src → obs
+  ctx.beginPath();
+  ctx.moveTo(sp.x, sp.y);
+  ctx.lineTo(op.x, op.y);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1 * window.devicePixelRatio;
+  ctx.setLineDash([6*window.devicePixelRatio, 6*window.devicePixelRatio]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Source — lock icon if off-screen
+  if (src.nx <= 1.0) drawMarker(ctx, sp.x, sp.y, '★', '#f4c24a', 'SOURCE');
+
+  // Observer — show lock in auto mode
+  drawMarker(ctx, op.x, op.y, '◆', '#6b8aff', mode === 'auto' ? 'OBS 🔒' : 'OBS');
+}
+
+function drawMarker(c, x, y, sym, color, label) {
+  const r = 18 * window.devicePixelRatio;
+  c.beginPath(); c.arc(x, y, r, 0, Math.PI*2);
+  c.fillStyle = color + '22'; c.fill();
+  c.beginPath(); c.arc(x, y, r, 0, Math.PI*2);
+  c.strokeStyle = color; c.lineWidth = 2 * window.devicePixelRatio; c.stroke();
+  c.fillStyle = color;
+  c.font = `${14*window.devicePixelRatio}px system-ui`;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(sym, x, y);
+  c.font = `bold ${10*window.devicePixelRatio}px system-ui`;
+  c.fillText(label, x, y - 26*window.devicePixelRatio);
+}
+
+function drawWaves() {
+  drawWavePanel(sctx, srcWaveCanvas.width, srcWaveCanvas.height, srcHistory, '#f4c24a');
+  drawWavePanel(octx, obsWaveCanvas.width, obsWaveCanvas.height, obsHistory, '#6b8aff');
+}
+
+function drawWavePanel(c, W, H, history, color) {
+  c.clearRect(0,0,W,H);
+  c.fillStyle = '#1e2135'; c.fillRect(0,0,W,H);
+  const mid = H / 2;
+  c.beginPath(); c.moveTo(0, mid); c.lineTo(W, mid);
+  c.strokeStyle = 'rgba(255,255,255,0.08)'; c.lineWidth = 1; c.stroke();
+
+  const amp = H * 0.38;
+  const dpr = window.devicePixelRatio;
+
+  c.beginPath();
+  for (let i = 0; i < history.length; i++) {
+    const x = (i / history.length) * W;
+    const y = mid - history[i] * amp;
+    i === 0 ? c.moveTo(x, y) : c.lineTo(x, y);
+  }
+  c.strokeStyle = color; c.lineWidth = 1.5 * dpr; c.stroke();
+
+  c.beginPath();
+  for (let i = 0; i < history.length; i++) {
+    const x = (i / history.length) * W;
+    const y = mid - history[i] * amp;
+    i === 0 ? c.moveTo(x, y) : c.lineTo(x, y);
+  }
+  c.lineTo(W, mid); c.lineTo(0, mid);
+  c.fillStyle = color + '18'; c.fill();
+
+}
+
+// ─── Frequency vs time graph ──────────────────────────────────────────────────
+function drawFreqGraph() {
+  const GW = freqGraphCanvas.width, GH = freqGraphCanvas.height;
+  const dpr = window.devicePixelRatio;
+  const PAD = {top: 10*dpr, bottom: 22*dpr, left: 42*dpr, right: 10*dpr};
+  const pw = GW - PAD.left - PAD.right;
+  const ph = GH - PAD.top - PAD.bottom;
+
+  fgctx.clearRect(0, 0, GW, GH);
+  fgctx.fillStyle = '#1e2135';
+  fgctx.fillRect(0, 0, GW, GH);
+
+  // y-axis bounds reflect the true (asymmetric) Doppler range.
+  // For auto mode use the exact approach/recession values as natural limits;
+  // for manual mode fall back to ±35% of emitFreq as a sensible default.
+  const validF = freqHistory.map(p => p.fobs).filter(f => f !== null && isFinite(f));
+  let fMax, fMin;
+  if (mode === 'auto' && srcSpeedPx < waveSpeed) {
+    const fApproach = emitFreq * waveSpeed / (waveSpeed - srcSpeedPx); // source heading toward obs
+    const fRecede   = emitFreq * waveSpeed / (waveSpeed + srcSpeedPx); // source heading away
+    const pad = (fApproach - fRecede) * 0.12;
+    fMax = fApproach + pad;
+    fMin = fRecede  - pad;
+  } else {
+    // Manual: symmetric fallback, expanded to fit any data
+    const maxDev = validF.length > 0
+      ? Math.max(...validF.map(f => Math.abs(f - emitFreq)))
+      : emitFreq * 0.35;
+    const half = Math.max(emitFreq * 0.35, maxDev * 1.25);
+    fMin = emitFreq - half;
+    fMax = emitFreq + half;
+  }
+  const fRange = fMax - fMin;
+
+  function fy(f) { return PAD.top + ph * (1 - (f - fMin) / fRange); }
+
+  // In auto mode fix x-axis to [0, tMax]; in manual mode scroll with buffer index
+  const fieldWidthPx = W / window.devicePixelRatio;
+  const tMax = mode === 'auto' ? fieldWidthPx / srcSpeedPx : null;
+  function fx(p) {
+    if (tMax !== null) {
+      return PAD.left + (p.t / tMax) * pw;
+    } else {
+      // p is an index in this branch
+      return PAD.left + (p / (FREQ_HIST - 1)) * pw;
+    }
+  }
+
+  // Grid lines & y-axis labels
+  fgctx.textAlign = 'right';
+  fgctx.textBaseline = 'middle';
+  fgctx.font = `${9*dpr}px system-ui`;
+  const nTicks = 4;
+  for (let i = 0; i <= nTicks; i++) {
+    const f = fMin + (fRange * i / nTicks);
+    const y = fy(f);
+    fgctx.beginPath();
+    fgctx.moveTo(PAD.left, y); fgctx.lineTo(GW - PAD.right, y);
+    fgctx.strokeStyle = f === emitFreq ? 'rgba(244,194,74,0.15)' : 'rgba(255,255,255,0.05)';
+    fgctx.lineWidth = 1;
+    fgctx.stroke();
+    fgctx.fillStyle = 'rgba(145,150,176,0.8)';
+    fgctx.fillText(f.toFixed(1), PAD.left - 4*dpr, y);
+  }
+
+  // Emitted frequency reference line (dashed gold)
+  const ey = fy(emitFreq);
+  fgctx.beginPath();
+  fgctx.moveTo(PAD.left, ey); fgctx.lineTo(GW - PAD.right, ey);
+  fgctx.strokeStyle = 'rgba(244,194,74,0.55)';
+  fgctx.lineWidth = 1.5 * dpr;
+  fgctx.setLineDash([5*dpr, 5*dpr]);
+  fgctx.stroke();
+  fgctx.setLineDash([]);
+
+  // Axes
+  fgctx.beginPath();
+  fgctx.moveTo(PAD.left, PAD.top); fgctx.lineTo(PAD.left, PAD.top + ph);
+  fgctx.moveTo(PAD.left, PAD.top + ph); fgctx.lineTo(PAD.left + pw, PAD.top + ph);
+  fgctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  fgctx.lineWidth = 1 * dpr;
+  fgctx.stroke();
+
+  // x-axis label — show tMax on the right in auto mode
+  fgctx.fillStyle = 'rgba(145,150,176,0.6)';
+  fgctx.font = `${8.5*dpr}px system-ui`;
+  fgctx.textAlign = 'center';
+  fgctx.textBaseline = 'bottom';
+  if (tMax !== null) {
+    fgctx.fillText('0', PAD.left, GH - 1*dpr);
+    fgctx.fillText(`${tMax.toFixed(1)} s`, PAD.left + pw, GH - 1*dpr);
+    fgctx.fillStyle = 'rgba(145,150,176,0.4)';
+    fgctx.fillText('time (s)', PAD.left + pw / 2, GH - 1*dpr);
+  } else {
+    fgctx.fillText('time →', PAD.left + pw / 2, GH - 1*dpr);
+  }
+
+  // y-axis label
+  fgctx.save();
+  fgctx.translate(10*dpr, PAD.top + ph/2);
+  fgctx.rotate(-Math.PI/2);
+  fgctx.textAlign = 'center';
+  fgctx.textBaseline = 'top';
+  fgctx.fillText('freq (Hz)', 0, 0);
+  fgctx.restore();
+
+  if (freqHistory.length < 2) return;
+
+  // Map history to canvas coordinates
+  const obsPoints = freqHistory.map((p, i) => ({
+    x: tMax !== null ? fx(p) : fx(i),
+    y: p.fobs !== null ? fy(p.fobs) : null
+  }));
+
+  // Draw observed line segment by segment, skipping nulls
+  // Group into runs of consecutive non-null points and stroke each run
+  let runStart = null;
+  for (let i = 0; i <= obsPoints.length; i++) {
+    const p = i < obsPoints.length ? obsPoints[i] : null;
+    const valid = p && p.y !== null;
+    if (valid && runStart === null) {
+      runStart = i;
+    } else if (!valid && runStart !== null) {
+      // Stroke this run
+      const run = obsPoints.slice(runStart, i);
+      if (run.length >= 2) {
+        // Colour by average shift of run
+        const avgF = run.reduce((s, _, j) => s + freqHistory[runStart + j].fobs, 0) / run.length;
+        const avgShift = (avgF - emitFreq) / emitFreq;
+        fgctx.beginPath();
+        run.forEach((pt, j) => j === 0 ? fgctx.moveTo(pt.x, pt.y) : fgctx.lineTo(pt.x, pt.y));
+        fgctx.strokeStyle = avgShift > 0.02 ? '#6be8ff' : avgShift < -0.02 ? '#ff6b6b' : '#9196b0';
+        fgctx.lineWidth = 2 * dpr;
+        fgctx.stroke();
+      }
+      // Dot at first point of run to mark arrival
+      if (run.length >= 1) {
+        const pt = run[0];
+        const f0 = freqHistory[runStart].fobs;
+        const s0 = (f0 - emitFreq) / emitFreq;
+        fgctx.beginPath();
+        fgctx.arc(pt.x, pt.y, 3*dpr, 0, Math.PI*2);
+        fgctx.fillStyle = s0 > 0.02 ? '#6be8ff' : s0 < -0.02 ? '#ff6b6b' : '#9196b0';
+        fgctx.fill();
+      }
+      runStart = null;
+    }
+  }
+
+  // Dot at the current (rightmost) valid point
+  for (let i = obsPoints.length - 1; i >= 0; i--) {
+    if (obsPoints[i].y !== null) {
+      const lf = freqHistory[i].fobs;
+      const ls = (lf - emitFreq) / emitFreq;
+      fgctx.beginPath();
+      fgctx.arc(obsPoints[i].x, obsPoints[i].y, 3.5*dpr, 0, Math.PI*2);
+      fgctx.fillStyle = ls > 0.02 ? '#6be8ff' : ls < -0.02 ? '#ff6b6b' : '#9196b0';
+      fgctx.fill();
+      break;
+    }
+  }
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+onFreqChange(1.0);
+onSpeedChange(150);
+onSrcSpeedChange(60);
+renderPhysics();
+updateStats();
+requestAnimationFrame(step);
+</script>
+</body>
+</html>
