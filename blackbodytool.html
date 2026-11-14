@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>blackbodytool</title>
+
+<style>
+:root {
+  --bg:#0d0f1a; --surface:#161829; --surface2:#1e2135;
+  --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.14);
+  --text:#e8eaf4; --text2:#9196b0;
+  --accent:#6b8aff; --accent2:#a78bfa; --gold:#f4c24a;
+  --radius:10px; box-sizing:border-box; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center}
+h1{font-size:1.1rem;font-weight:500;letter-spacing:.03em}
+.subtitle{font-size:.75rem;color:var(--text2);margin-top:2px}
+.app{width:100%;max-width:1100px;padding:20px 16px 32px;display:flex;flex-direction:column;gap:16px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.law-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:500;background:var(--surface);border:1px solid var(--border2);color:var(--text2);cursor:pointer;transition:all .2s}
+.tab:hover{color:var(--text);border-color:var(--accent)}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.main{display:grid;grid-template-columns:1fr 280px;gap:16px}
+@media(max-width:700px){.main{grid-template-columns:1fr}}
+.canvas-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+canvas{display:block;width:100%}
+.sidebar{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.card-title{font-size:.72rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--surface2);border-radius:8px;padding:8px 10px}
+.stat-label{font-size:.65rem;color:var(--text2);margin-bottom:3px}
+.stat-value{font-size:1rem;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.stat-value.gold{color:var(--gold)} .stat-value.accent{color:var(--accent)}
+.slider-row{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.slider-row:last-child{margin-bottom:0}
+.slider-label{display:flex;justify-content:space-between;font-size:.72rem}
+.slider-label span:first-child{color:var(--text2)} .slider-label span:last-child{color:var(--text);font-weight:500}
+input[type=range]{width:100%;height:4px;-webkit-appearance:none;background:var(--border2);border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);box-shadow:0 0 0 1px var(--accent)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:7px 10px;border-radius:8px;font-size:.75rem;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);transition:all .15s}
+.btn:hover{color:var(--text);border-color:var(--accent)}
+.law-desc{font-size:.78rem;line-height:1.65;color:var(--text2)}
+.law-desc strong{color:var(--text);font-weight:500}
+.formula{display:block;margin:7px 0;padding:7px 10px;background:var(--surface2);border-left:2px solid var(--accent);border-radius:0 6px 6px 0;font-family:'Courier New',monospace;font-size:.82rem;color:var(--gold)}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.toggle-label{font-size:.72rem;color:var(--text2)}
+.toggle{position:relative;width:32px;height:18px;background:var(--border2);border-radius:9px;cursor:pointer;transition:background .2s}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle.on::after{transform:translateX(14px)}
+.help-tab{padding:8px 14px;font-size:.75rem;font-weight:500;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;transition:all .15s;margin-bottom:-1px}
+.help-tab:hover{color:var(--text)} .help-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.hb{background:var(--surface2);border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.hbt{font-size:.72rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+math{color:var(--gold);font-size:1.05em}math[display="block"]{display:block;text-align:center;margin:.6em 0;overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <h1>Blackbody Radiation</h1>
+    <div class="subtitle">Interactive thermal emission explorer · Year 1 Astrophysics</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div class="law-tabs" id="tabs">
+      <button class="tab active" onclick="setSection(0)">Planck Spectrum</button>
+      <button class="tab" onclick="setSection(1)">Wien's Law</button>
+      <button class="tab" onclick="setSection(2)">Stefan–Boltzmann</button>
+    </div>
+    <button onclick="document.getElementById('hmodal').style.display='flex'" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:.85rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">?</button>
+  </div>
+</div>
+
+<!-- HELP MODAL -->
+<div id="hmodal" onclick="if(event.target===this)this.style.display='none'" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;max-width:680px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.5)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+      <div><div style="font-size:1rem;font-weight:600">User Guide</div><div style="font-size:.72rem;color:var(--text2);margin-top:2px">Blackbody Radiation Interactive Explorer</div></div>
+      <button onclick="document.getElementById('hmodal').style.display='none'" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+    <div style="display:flex;border-bottom:1px solid var(--border);padding:0 20px">
+      <button class="help-tab active" onclick="helpTab(0,this)">Overview</button>
+      <button class="help-tab" onclick="helpTab(1,this)">Spectrum</button>
+      <button class="help-tab" onclick="helpTab(2,this)">Wien</button>
+      <button class="help-tab" onclick="helpTab(3,this)">Stefan–Boltzmann</button>
+      <button class="help-tab" onclick="helpTab(4,this)">Tips</button>
+    </div>
+    <div style="overflow-y:auto;padding:20px;flex:1;font-size:.82rem;line-height:1.75;color:var(--text2)">
+      <div class="hs" id="hs0">
+        <p style="color:var(--text);margin-bottom:12px">This tool lets you explore the three key properties of blackbody radiation: the <strong>Planck spectrum</strong>, <strong>Wien's displacement law</strong>, and the <strong>Stefan–Boltzmann law</strong>. Use the tabs at the top to switch between sections.</p>
+        <p>A blackbody is an idealised object that absorbs all radiation incident on it and re-emits according to its temperature alone. Stars are well approximated by blackbodies — their colour and luminosity are almost entirely determined by their surface temperature T.</p>
+      </div>
+      <div class="hs" id="hs1" style="display:none">
+        <p style="color:var(--text);margin-bottom:14px"><strong>Planck Spectrum.</strong> The Planck function B<sub>λ</sub>(λ,T) = (2hc²/λ⁵)/(e<sup>hc/λkT</sup>−1) gives the spectral intensity emitted per unit wavelength. The curve's shape, peak position, and overall height all depend on T.</p>
+        <div class="hb"><div class="hbt">Controls</div><ul style="margin:0;padding-left:18px;line-height:2.1"><li><strong style="color:var(--text)">Temperature slider</strong> — drag to vary T from 1,000 to 50,000 K (log scale)</li><li><strong style="color:var(--text)">Star presets</strong> — click any pill to load that star's surface temperature</li><li><strong style="color:var(--text)">Pin curve</strong> — save the current curve and overlay a second for comparison (up to 3)</li><li><strong style="color:var(--text)">Show λ_max marker</strong> — toggle the dashed peak-wavelength line</li></ul></div>
+        <div class="hb"><div class="hbt">Reading the plot</div>The y-axis is normalised to the current curve's peak = 1. Overlay curves are each normalised to their own peak, so you can compare shapes directly. The coloured strip at the bottom marks the visible spectrum (380–750 nm).</div>
+      </div>
+      <div class="hs" id="hs2" style="display:none">
+        <p style="color:var(--text);margin-bottom:14px"><strong>Wien's Displacement Law.</strong> The peak wavelength λ<sub>max</sub> = b/T, where b = 2.898×10<sup>−3</sup> m·K. As temperature doubles, λ<sub>max</sub> halves — objects appear bluer as they get hotter.</p>
+        <div class="hb"><div class="hbt">The graph</div>The main panel plots log λ<sub>max</sub> vs log T. Because λ<sub>max</sub> ∝ T<sup>−1</sup>, this is a straight line of slope −1 on a log–log plot. Horizontal coloured bands show which part of the EM spectrum the peak falls in. The yellow cursor follows the current temperature.</div>
+        <div class="hb"><div class="hbt">Star dots</div>Named stars appear as coloured dots on the curve. The Sun (5,778 K) peaks in the green (≈502 nm), but we perceive it as white/yellow because all visible wavelengths are strongly emitted.</div>
+      </div>
+      <div class="hs" id="hs3" style="display:none">
+        <p style="color:var(--text);margin-bottom:14px"><strong>Stefan–Boltzmann Law.</strong> Total power radiated per unit surface area F = σT⁴. The graph plots log(F/F<sub>☉</sub>) vs T, showing how surface flux scales as T⁴ regardless of a star's size.</p>
+        <div class="hb"><div class="hbt">The graph</div>A log–log plot of F/F<sub>☉</sub> vs T. The T⁴ relationship appears as a straight line of slope 4. Click any star in the sidebar to highlight it.</div>
+        <div class="hb"><div class="hbt">Doubling T</div>Double the temperature → luminosity increases by 2⁴ = 16×. This steep T⁴ dependence explains why blue supergiants are vastly more luminous than red dwarfs of similar size.</div>
+      </div>
+      <div class="hs" id="hs4" style="display:none">
+        <div class="hb"><div class="hbt">Verifying Wien's law</div>Switch to the Wien tab, note λ<sub>max</sub> at the Sun's temperature (5,778 K). Now halve T to 2,889 K — the peak wavelength should double. Try it.</div>
+        <div class="hb"><div class="hbt">Verifying Stefan–Boltzmann</div>In the Stefan–Boltzmann tab, increase T by 10% from the Sun (to 6,356 K). The luminosity increases by 1.1⁴ ≈ 1.46 — a 46% boost from a 10% temperature rise!</div>
+        <div class="hb"><div class="hbt">Comparing spectra</div>In the Spectrum tab, load Betelgeuse (3,500 K) and pin its curve. Then load the Sun (5,778 K). Notice the bluer peak, the larger amplitude, and how much more emission falls in the visible range.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="main">
+  <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+    <div class="canvas-card"><canvas id="cv" height="460"></canvas></div>
+    <div id="tempcontrol" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px"></div>
+    <div id="statsbar" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 16px"></div>
+  </div>
+  <div class="sidebar" id="sidebar"></div>
+</div>
+
+</div><!-- .app -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+// LaTeX helper (KaTeX)
+// ═══════════════════════════════════════════════════════
+function tex(latex, display=false) {
+  if (typeof katex !== 'undefined')
+    return katex.renderToString(latex, { throwOnError:false, displayMode:display, output:'mathml' });
+  return `<code class="formula">${latex}</code>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// PHYSICS
+// ═══════════════════════════════════════════════════════
+const HP=6.626e-34, CL=3e8, KB=1.381e-23, SB=5.67e-8, WB=2.898e-3, TSUN=5778;
+
+function planck(lam_m, T) {
+  const x = HP * CL / (lam_m * KB * T);
+  if (x > 709) return 0;
+  return 2 * HP * CL * CL / (Math.pow(lam_m, 5) * (Math.exp(x) - 1));
+}
+function planckRJ(lam_m, T) { return 2 * CL * KB * T / Math.pow(lam_m, 4); }
+function wienNm(T)  { return WB / T * 1e9; }
+function relLum(T)  { return Math.pow(T / TSUN, 4); }
+function clamp(v,lo,hi){ return Math.max(lo, Math.min(hi, v)); }
+
+// Blackbody apparent colour (Tanner Helland algorithm)
+function bbRGB(T) {
+  const t = clamp(T, 1000, 40000) / 100;
+  const r = t <= 66 ? 255 : clamp(329.699 * Math.pow(t-60, -0.1332), 0, 255);
+  const g = t <= 66 ? clamp(99.471 * Math.log(t) - 161.120, 0, 255)
+                    : clamp(288.122 * Math.pow(t-60, -0.0755), 0, 255);
+  const b = t >= 66 ? 255 : t <= 19 ? 0 : clamp(138.518 * Math.log(t-10) - 305.045, 0, 255);
+  return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+}
+
+// Visible wavelength → RGB for spectrum strip
+function wavRGB(nm) {
+  if (nm < 380 || nm > 750) return null;
+  let r,g,b;
+  if      (nm < 440) { r=-(nm-440)/60; g=0;         b=1; }
+  else if (nm < 490) { r=0;            g=(nm-440)/50;b=1; }
+  else if (nm < 510) { r=0;            g=1;          b=-(nm-510)/20; }
+  else if (nm < 580) { r=(nm-510)/70;  g=1;          b=0; }
+  else if (nm < 645) { r=1;            g=-(nm-645)/65;b=0; }
+  else               { r=1;            g=0;          b=0; }
+  const f = nm < 420 ? 0.3+0.7*(nm-380)/40 : nm > 700 ? 0.3+0.7*(750-nm)/50 : 1;
+  return [Math.round(clamp(r*f,0,1)*255), Math.round(clamp(g*f,0,1)*255), Math.round(clamp(b*f,0,1)*255)];
+}
+
+function getSpType(T) {
+  if (T < 3700)  return 'M type (red)';
+  if (T < 5200)  return 'K type (orange)';
+  if (T < 6000)  return 'G type (yellow)';
+  if (T < 7500)  return 'F type (yellow-white)';
+  if (T < 10000) return 'A type (white)';
+  if (T < 30000) return 'B type (blue-white)';
+  return 'O type (blue)';
+}
+
+// Convert integer to Unicode superscript string for canvas tick labels
+function sup(n) {
+  const m={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻'};
+  return String(n).split('').map(c=>m[c]||c).join('');
+}
+
+function fmtLum(l) {
+  if (l < 0.001) return l.toExponential(1);
+  if (l < 10)    return l.toFixed(2);
+  if (l < 1000)  return Math.round(l).toString();
+  return l.toExponential(1);
+}
+
+// ═══════════════════════════════════════════════════════
+// STAR DATA
+// ═══════════════════════════════════════════════════════
+const STARS = [
+  { name:'Betelgeuse', T:3500,  type:'M2', R:764,  color:'#ff7744' },
+  { name:'Sun',        T:5778,  type:'G2', R:1.0,  color:'#ffe066' },
+  { name:'Vega',       T:9602,  type:'A0', R:2.36, color:'#ccdcff' },
+  { name:'Rigel',      T:11000, type:'B8', R:78.9, color:'#aabfff' },
+];
+const OV_COLORS = ['#f4c24a','#a78bfa','#6bcfb7','#f87171','#38bdf8','#fb923c','#a3e635'];
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let sec=0, T=5778, activePreset='Sun', overlays=[], showPeakMark=true, normalise=false, selectedOverlay=null, filterSet=null, showRayleigh=false;
+
+// ═══════════════════════════════════════════════════════
+// CANVAS
+// ═══════════════════════════════════════════════════════
+const cv  = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W, H, dpr;
+
+function resize() {
+  const r = cv.parentElement.getBoundingClientRect();
+  dpr = devicePixelRatio || 1;
+  W   = cv.width  = Math.floor(r.width * dpr);
+  H   = cv.height = 460 * dpr;
+  cv.style.height = '460px';
+  draw();
+}
+window.addEventListener('resize', resize);
+
+// ═══════════════════════════════════════════════════════
+// DRAW DISPATCH
+// ═══════════════════════════════════════════════════════
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  if      (sec === 0) drawSpectrum();
+  else if (sec === 1) drawWien();
+  else                drawStefan();
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 0 — PLANCK SPECTRUM
+// ═══════════════════════════════════════════════════════
+const LMIN=100, LMAX=3000; // nm
+
+function planckNorm(T_k) {
+  const lp = clamp(wienNm(T_k), LMIN, LMAX);
+  return planck(lp * 1e-9, T_k);
+}
+// Fixed reference = Sun's peak — used for un-normalised y-axis labels
+const NORM_FIXED = planckNorm(TSUN);
+
+// Linear interpolation into a tabulated filter curve
+// filt: { lam0 (nm), step (nm), trans[] }
+function filtTrans(filt, lam) {
+  const t = (lam - filt.lam0) / filt.step;
+  const j = Math.floor(t);
+  if (j < 0 || j >= filt.trans.length - 1) return 0;
+  return filt.trans[j] + (t - j) * (filt.trans[j+1] - filt.trans[j]);
+}
+
+// Johnson-Cousins UBVRI — Bessell (1990), 10 nm steps, normalised
+const FILTERS_UBVRI = [
+  { name:'U', color:'#c084fc', lam0:300, step:10,
+    trans:[0,0,0.02,0.08,0.30,0.72,1.00,0.76,0.30,0.05,0] },
+  { name:'B', color:'#60a5fa', lam0:350, step:10,
+    trans:[0,0.02,0.10,0.30,0.68,0.90,0.98,0.96,0.90,1.00,0.96,0.88,0.72,0.52,0.32,0.17,0.08,0.03,0.01,0] },
+  { name:'V', color:'#86efac', lam0:470, step:10,
+    trans:[0,0.02,0.10,0.38,0.72,0.92,0.98,1.00,1.00,0.97,0.90,0.78,0.60,0.40,0.22,0.10,0.04,0.01,0] },
+  { name:'R', color:'#f87171', lam0:550, step:10,
+    trans:[0,0.03,0.15,0.40,0.70,0.88,0.96,1.00,0.98,0.90,0.76,0.56,0.38,0.22,0.12,0.06,0.03,0.01,0] },
+  { name:'I', color:'#fb923c', lam0:700, step:10,
+    trans:[0,0.02,0.10,0.28,0.60,0.88,0.98,1.00,0.98,0.90,0.74,0.50,0.26,0.08,0.01,0] },
+];
+
+// SDSS ugriz — Fukugita et al. 1996 / Doi et al. 2010, 10 nm steps, normalised
+const FILTERS_UGRIZ = [
+  { name:'u', color:'#a78bfa', lam0:300, step:10,
+    trans:[0,0,0.03,0.22,0.60,0.95,1.00,0.72,0.28,0.07,0] },
+  { name:'g', color:'#6ee7b7', lam0:370, step:10,
+    trans:[0,0.06,0.50,0.90,0.98,1.00,1.00,0.99,0.97,0.95,0.92,0.90,0.86,0.78,0.60,0.38,0.17,0.05,0.01,0] },
+  { name:'r', color:'#f87171', lam0:550, step:10,
+    trans:[0,0.04,0.30,0.70,0.92,0.98,1.00,1.00,0.98,0.95,0.90,0.80,0.60,0.35,0.12,0.03,0] },
+  { name:'i', color:'#fb923c', lam0:680, step:10,
+    trans:[0,0.05,0.42,0.80,0.95,0.99,1.00,1.00,0.99,0.98,0.95,0.88,0.72,0.48,0.22,0.08,0.02,0] },
+  { name:'z', color:'#fbbf24', lam0:830, step:10,
+    trans:[0,0.05,0.42,0.78,0.95,1.00,1.00,0.98,0.95,0.88,0.75,0.55,0.33,0.15,0.05,0.01,0] },
+];
+
+function drawSpectrum() {
+  const pd = {t:36*dpr, r:20*dpr, b:62*dpr, l:62*dpr};
+  const pw = W - pd.l - pd.r,  ph = H - pd.t - pd.b;
+
+  ctx.fillStyle = '#0a0d18';
+  ctx.fillRect(0,0,W,H);
+
+  const lx = lam => pd.l + (lam - LMIN) / (LMAX - LMIN) * pw;
+
+  // EM region shading
+  ctx.fillStyle = 'rgba(180,120,255,0.07)';
+  ctx.fillRect(pd.l, pd.t, lx(380)-pd.l, ph);
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  ctx.fillRect(lx(380), pd.t, lx(750)-lx(380), ph);
+  ctx.fillStyle = 'rgba(255,100,40,0.06)';
+  ctx.fillRect(lx(750), pd.t, pw-(lx(750)-pd.l), ph);
+
+  // Region labels
+  ctx.font = `${9.5*dpr}px system-ui`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(145,150,176,0.45)';
+  ctx.fillText('UV',       (pd.l+lx(380))/2,       pd.t+13*dpr);
+  ctx.fillText('Visible',  (lx(380)+lx(750))/2,    pd.t+13*dpr);
+  ctx.fillText('Infrared', (lx(750)+W-pd.r)/2,     pd.t+13*dpr);
+
+  // Grid lines
+  ctx.setLineDash([2*dpr,4*dpr]);
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = dpr;
+  for (const f of [0.25,0.5,0.75,1]) {
+    const y = pd.t + ph - f*ph;
+    ctx.beginPath(); ctx.moveTo(pd.l,y); ctx.lineTo(W-pd.r,y); ctx.stroke();
+  }
+  for (const lam of [200,400,600,800,1000,1500,2000,2500]) {
+    ctx.beginPath(); ctx.moveTo(lx(lam),pd.t); ctx.lineTo(lx(lam),pd.t+ph); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Normalisation — shared scale (all curves) or per-curve
+  const allPeaks = [planckNorm(T), ...overlays.map(o => planckNorm(o.T))];
+  const sharedNorm = Math.max(...allPeaks) / 0.88;  // tallest curve reaches 88% of panel
+  const vy = val => {
+    const n = normalise ? planckNorm(T) / 0.88 : sharedNorm;
+    return pd.t + ph - (val / n) * ph;
+  };
+
+  // Filter fills — drawn behind all curves, using focus temperature
+  if (filterSet !== null) {
+    const FILTERS = filterSet === 'ugriz' ? FILTERS_UGRIZ : FILTERS_UBVRI;
+    const focusT   = selectedOverlay !== null ? selectedOverlay : T;
+    const focusNorm = normalise ? planckNorm(focusT) / 0.88 : sharedNorm;
+    const focusY   = val => pd.t + ph - (val / focusNorm) * ph;
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(pd.l, pd.t, pw, ph); ctx.clip(); // clip to plot area
+
+    for (const filt of FILTERS) {
+      const npts = 400;
+      const pts  = [];
+      for (let i = 0; i <= npts; i++) {
+        const lam   = LMIN + (i / npts) * (LMAX - LMIN);
+        const trans = filtTrans(filt, lam);
+        pts.push({ x: lx(lam), y: focusY(planck(lam * 1e-9, focusT) * trans) });
+      }
+
+      // Filled region
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = filt.color;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pd.t + ph);
+      for (const p of pts) ctx.lineTo(p.x, p.y);
+      ctx.lineTo(pts[pts.length-1].x, pd.t + ph);
+      ctx.closePath();
+      ctx.fill();
+
+      // Top edge stroke
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = filt.color;
+      ctx.lineWidth   = 1.5 * dpr;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      for (let i = 0; i < pts.length; i++) {
+        if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
+        else         ctx.lineTo(pts[i].x, pts[i].y);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // Filter label above the peak (clamped inside plot)
+      const xLbl = lx(filt.lam0);
+      const yPeak = focusY(planck(filt.lam0 * 1e-9, focusT));
+      const yLbl  = Math.max(pd.t + 10 * dpr, yPeak - 8 * dpr);
+      ctx.font      = `bold ${10 * dpr}px system-ui`;
+      ctx.fillStyle = filt.color;
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = 0.9;
+      ctx.fillText(filt.name, xLbl, yLbl);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
+  // Overlay curves — dim everything when one is selected
+  const hasSel = selectedOverlay !== null;
+  for (const ov of overlays) {
+    const isSel = ov.T === selectedOverlay;
+    const ovAlpha = hasSel ? (isSel ? 1.0 : 0.2) : 0.65;
+    const ovY = val => {
+      const n = normalise ? planckNorm(ov.T) / 0.88 : sharedNorm;
+      return pd.t + ph - (val / n) * ph;
+    };
+    drawPCurve(ov.T, ov.color, lx, ovY, pd, ph, ovAlpha, !isSel, isSel);
+  }
+
+  // Main curve — dim when an overlay is selected
+  const mainAlpha = hasSel ? 0.2 : 1.0;
+  drawPCurve(T, bbRGB(T), lx, vy, pd, ph, mainAlpha, false);
+
+  // Rayleigh–Jeans approximation curve
+  if (showRayleigh) {
+    const rjT    = selectedOverlay !== null ? selectedOverlay : T;
+    const rjNorm = normalise ? planckNorm(rjT) / 0.88 : sharedNorm;
+    const rjY    = val => pd.t + ph - (val / rjNorm) * ph;
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(pd.l, pd.t, pw, ph); ctx.clip();
+
+    ctx.strokeStyle = 'rgba(255,255,220,0.75)';
+    ctx.lineWidth   = 1.8 * dpr;
+    ctx.setLineDash([7*dpr, 4*dpr]);
+    ctx.beginPath();
+    let rjFirst = true;
+    for (let i = 0; i <= 600; i++) {
+      const lam = LMIN + (i / 600) * (LMAX - LMIN);
+      const x   = lx(lam);
+      const y   = Math.max(pd.t - 20 * dpr, rjY(planckRJ(lam * 1e-9, rjT)));
+      if (rjFirst) { ctx.moveTo(x, y); rjFirst = false; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Tilted label — analytically find the wavelength where curve is ~25% from plot top
+    const lblVal = rjNorm * 0.50; // rjY(lblVal) puts label at pd.t + 0.50*ph
+    const lblLam = Math.pow(2 * CL * KB * rjT / lblVal, 0.25) * 1e9; // nm
+    if (lblLam >= LMIN + 60 && lblLam <= LMAX - 60) {
+      const dL  = 25; // nm for slope estimate
+      const ax  = lx(lblLam - dL);
+      const ay  = rjY(planckRJ((lblLam - dL) * 1e-9, rjT));
+      const bx  = lx(lblLam + dL);
+      const by  = rjY(planckRJ((lblLam + dL) * 1e-9, rjT));
+      const ang = Math.atan2(by - ay, bx - ax);
+      ctx.save();
+      ctx.translate(lx(lblLam), rjY(planckRJ(lblLam * 1e-9, rjT)) - 15 * dpr);
+      ctx.rotate(ang);
+      ctx.font      = `${11 * dpr}px system-ui`;
+      ctx.fillStyle = 'rgba(255,255,220,0.85)';
+      ctx.textAlign = 'center';
+      ctx.fillText('R–J approx.', 0, 0);
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  // Peak wavelength marker
+  const lp = wienNm(T);
+  if (showPeakMark) {
+    if (lp >= LMIN && lp <= LMAX) {
+      const xp = lx(lp);
+      ctx.setLineDash([5*dpr,4*dpr]);
+      ctx.strokeStyle = 'rgba(244,194,74,0.8)';
+      ctx.lineWidth = 1.5*dpr;
+      ctx.beginPath(); ctx.moveTo(xp,pd.t+16*dpr); ctx.lineTo(xp,pd.t+ph); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = `bold ${9.5*dpr}px system-ui`;
+      ctx.fillStyle = '#f4c24a';
+      const left = lp < 1600;
+      ctx.textAlign = left ? 'left' : 'right';
+      ctx.fillText(`λmax = ${Math.round(lp)} nm`, xp+(left?6*dpr:-6*dpr), pd.t+30*dpr);
+    } else {
+      ctx.font = `${9.5*dpr}px system-ui`;
+      ctx.fillStyle = 'rgba(244,194,74,0.7)';
+      ctx.textAlign = 'center';
+      const note = lp < LMIN ? `in UV (${Math.round(lp)} nm)` : `in IR (${(lp/1000).toFixed(1)} µm)`;
+      ctx.fillText(`λmax ${note} — peak outside display range`, W/2, pd.t+28*dpr);
+    }
+  }
+
+  // Visible spectrum colour strip below x-axis
+  const bandY = pd.t + ph + 8*dpr, bandH = 7*dpr;
+  for (let x = lx(380); x <= lx(750); x++) {
+    const lam = 380 + (x - lx(380)) / (lx(750) - lx(380)) * 370;
+    const rgb = wavRGB(lam);
+    if (rgb) { ctx.fillStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.9)`; ctx.fillRect(x,bandY,1.5,bandH); }
+  }
+  ctx.font = `${8.5*dpr}px system-ui`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(145,150,176,0.5)';
+  ctx.fillText('visible', (lx(380)+lx(750))/2, bandY+bandH+10*dpr);
+
+  // Axes
+  ctx.strokeStyle = 'rgba(145,150,176,0.3)';
+  ctx.lineWidth = dpr;
+  ctx.beginPath(); ctx.moveTo(pd.l,pd.t); ctx.lineTo(pd.l,pd.t+ph); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pd.l,pd.t+ph); ctx.lineTo(W-pd.r,pd.t+ph); ctx.stroke();
+
+  // X ticks
+  ctx.font = `${10*dpr}px system-ui`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(145,150,176,0.75)';
+  for (const lam of [200,400,600,800,1000,1500,2000,2500,3000]) {
+    const x = lx(lam);
+    ctx.beginPath(); ctx.moveTo(x,pd.t+ph); ctx.lineTo(x,pd.t+ph+5*dpr);
+    ctx.strokeStyle='rgba(145,150,176,0.3)'; ctx.stroke();
+    ctx.fillText(lam >= 1000 ? `${lam/1000}µm` : `${lam}`, x, pd.t+ph+16*dpr);
+  }
+  ctx.textAlign='center'; ctx.font=`${11*dpr}px system-ui`; ctx.fillStyle='rgba(145,150,176,0.75)';
+  ctx.fillText('Wavelength', pd.l+pw/2, pd.t+ph+40*dpr);
+
+  // Y ticks
+  ctx.textAlign = 'right'; ctx.font = `${10*dpr}px system-ui`;
+  for (const f of [0, 0.25, 0.5, 0.75, 1.0]) {
+    const y = pd.t + ph - f * ph;
+    ctx.fillStyle = 'rgba(145,150,176,0.75)';
+    if (normalise) {
+      ctx.fillText(f.toFixed(2), pd.l-7*dpr, y+4*dpr);
+    } else {
+      // Label as multiple of Sun's peak
+      const relVal = f * sharedNorm / NORM_FIXED;
+      const lbl = relVal === 0 ? '0' : relVal < 10 ? relVal.toFixed(1) : Math.round(relVal).toString();
+      ctx.fillText(lbl + '×', pd.l-7*dpr, y+4*dpr);
+    }
+    if (f > 0) {
+      ctx.beginPath(); ctx.moveTo(pd.l-4*dpr, y); ctx.lineTo(pd.l, y);
+      ctx.strokeStyle='rgba(145,150,176,0.3)'; ctx.stroke();
+    }
+  }
+
+  // Y axis label
+  ctx.save();
+  ctx.translate(14*dpr, pd.t+ph/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.font=`${11*dpr}px system-ui`; ctx.fillStyle='rgba(145,150,176,0.75)';
+  ctx.fillText(normalise ? 'Intensity (normalised to peak = 1)' : 'Intensity (relative to Sun peak)', 0, 0);
+  ctx.restore();
+}
+
+function drawPCurve(T_k, color, lx, vy, pd, ph, alpha, dashed, emph=false) {
+  const steps = Math.min(1200, Math.floor((W - pd.l - pd.r) / dpr));
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const lam = LMIN + (i/steps)*(LMAX-LMIN);
+    pts.push({ x: lx(lam), y: vy(planck(lam*1e-9, T_k)) });
+  }
+
+  // Fill under curve
+  ctx.globalAlpha = alpha * 0.12;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pd.t+ph);
+  for (const p of pts) ctx.lineTo(p.x, p.y);
+  ctx.lineTo(pts[pts.length-1].x, pd.t+ph);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Stroke
+  if (dashed) ctx.setLineDash([6*dpr,4*dpr]);
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = emph ? 3.5*dpr : 2.5*dpr;
+  ctx.beginPath();
+  for (let i=0; i<pts.length; i++) {
+    if (i===0) ctx.moveTo(pts[i].x, pts[i].y);
+    else       ctx.lineTo(pts[i].x, pts[i].y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 1 — WIEN'S LAW
+// ═══════════════════════════════════════════════════════
+function drawWien() {
+  const pd = {t:36*dpr, r:28*dpr, b:52*dpr, l:72*dpr};
+  const pw = W - pd.l - pd.r,  ph = H - pd.t - pd.b;
+
+  ctx.fillStyle = '#0a0d18';
+  ctx.fillRect(0,0,W,H);
+
+  const TLO=1000, THI=50000, LLMIN=50, LLMAX=3500;
+  const tx = t   => pd.l + Math.log10(t/TLO)   / Math.log10(THI/TLO)   * pw;
+  const ly = lam => pd.t + ph - Math.log10(clamp(lam,LLMIN,LLMAX)/LLMIN) / Math.log10(LLMAX/LLMIN) * ph;
+
+  // EM band horizontal shading
+  const emBands = [
+    { lo:LLMIN, hi:380,  col:'rgba(180,120,255,0.08)', lbl:'UV' },
+    { lo:380,   hi:750,  col:'rgba(255,255,255,0.04)', lbl:'Visible' },
+    { lo:750,   hi:LLMAX,col:'rgba(255,100,40,0.07)',  lbl:'IR'      },
+  ];
+  for (const b of emBands) {
+    const y0 = ly(Math.min(b.hi, LLMAX));
+    const y1 = ly(Math.max(b.lo, LLMIN));
+    const yt = Math.max(pd.t, y0), yb = Math.min(pd.t+ph, y1);
+    if (yt < yb) {
+      ctx.fillStyle = b.col;
+      ctx.fillRect(pd.l, yt, pw, yb-yt);
+    }
+  }
+
+  // Rainbow stripe in the visible band
+  const y380 = ly(380), y750 = ly(750);
+  if (y380 > pd.t && y750 < pd.t+ph) {
+    for (let y = Math.max(pd.t,y750); y <= Math.min(pd.t+ph,y380); y++) {
+      const lam = 380 + (y380-y)/(y380-y750)*370;
+      const rgb = wavRGB(lam);
+      if (rgb) { ctx.fillStyle=`rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.22)`; ctx.fillRect(pd.l,y,pw,1.5); }
+    }
+  }
+
+  // EM band labels (right edge)
+  ctx.font = `${9.5*dpr}px system-ui`;
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(145,150,176,0.5)';
+  const uvMid  = (Math.max(pd.t,ly(LLMAX))+Math.min(pd.t+ph,ly(380)))/2;
+  const visMid = (Math.max(pd.t,ly(750))+Math.min(pd.t+ph,ly(380)))/2;
+  const irMid  = (Math.max(pd.t,ly(LLMAX))+Math.min(pd.t+ph,ly(750)))/2;
+  if (uvMid>pd.t&&uvMid<pd.t+ph)   ctx.fillText('UV',       W-pd.r-4*dpr, uvMid+4*dpr);
+  if (visMid>pd.t&&visMid<pd.t+ph) ctx.fillText('Visible',  W-pd.r-4*dpr, visMid+4*dpr);
+  if (irMid>pd.t&&irMid<pd.t+ph)   ctx.fillText('IR',       W-pd.r-4*dpr, irMid+4*dpr);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = dpr;
+  ctx.setLineDash([2*dpr,4*dpr]);
+  for (const tV of [1000,2000,5000,10000,20000,50000]) {
+    const x=tx(tV); ctx.beginPath(); ctx.moveTo(x,pd.t); ctx.lineTo(x,pd.t+ph); ctx.stroke();
+  }
+  for (const lV of [100,200,500,1000,2000,3000]) {
+    const y=ly(lV); if(y<pd.t||y>pd.t+ph) continue;
+    ctx.beginPath(); ctx.moveTo(pd.l,y); ctx.lineTo(pd.l+pw,y); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Wien curve
+  ctx.strokeStyle = 'rgba(107,138,255,0.9)';
+  ctx.lineWidth = 2.5*dpr;
+  ctx.beginPath();
+  let first = true;
+  for (let i=0; i<=600; i++) {
+    const t  = TLO * Math.pow(THI/TLO, i/600);
+    const lp = wienNm(t);
+    if (lp < LLMIN || lp > LLMAX) { first=true; continue; }
+    const x=tx(t), y=ly(lp);
+    if (y<pd.t||y>pd.t+ph) { first=true; continue; }
+    if (first) { ctx.moveTo(x,y); first=false; } else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // "slope = −1" annotation
+  const a1=2800, a2=6000;
+  const ax1=tx(a1), ax2=tx(a2), ay1=ly(wienNm(a1)), ay2=ly(wienNm(a2));
+  ctx.save();
+  ctx.translate((ax1+ax2)/2+4*dpr, (ay1+ay2)/2-10*dpr);
+  ctx.rotate(Math.atan2(ay2-ay1, ax2-ax1));
+  ctx.font = `italic ${9.5*dpr}px system-ui`;
+  ctx.fillStyle = 'rgba(107,138,255,0.65)';
+  ctx.textAlign = 'left';
+  ctx.fillText('slope = −1', 0, 0);
+  ctx.restore();
+
+  // Star dots — stagger labels so Vega/Rigel don't overlap
+  const wnDy = [4, 4, -12, 16]; // Betelgeuse, Sun, Vega, Rigel
+  for (let si=0; si<STARS.length; si++) {
+    const st=STARS[si];
+    if (st.T<TLO||st.T>THI) continue;
+    const lp=wienNm(st.T);
+    if (lp<LLMIN||lp>LLMAX) continue;
+    const x=tx(st.T), y=ly(lp);
+
+    ctx.fillStyle=st.color; ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1.5*dpr;
+    ctx.beginPath(); ctx.arc(x,y,5*dpr,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+    ctx.font=`${9*dpr}px system-ui`; ctx.fillStyle=st.color; ctx.textAlign='left';
+    ctx.fillText(st.name, x+8*dpr, y+wnDy[si]*dpr);
+  }
+
+  // Current temperature cursor
+  const curLP = wienNm(T);
+  if (T>=TLO&&T<=THI && curLP>=LLMIN&&curLP<=LLMAX) {
+    const cx_=tx(T), cy_=ly(curLP);
+    if (cy_>=pd.t&&cy_<=pd.t+ph) {
+      ctx.strokeStyle='rgba(244,194,74,0.5)'; ctx.lineWidth=dpr;
+      ctx.setLineDash([3*dpr,3*dpr]);
+      ctx.beginPath(); ctx.moveTo(cx_,pd.t); ctx.lineTo(cx_,pd.t+ph); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pd.l,cy_); ctx.lineTo(pd.l+pw,cy_); ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle='#f4c24a'; ctx.strokeStyle='#1a1d30'; ctx.lineWidth=2*dpr;
+      ctx.beginPath(); ctx.arc(cx_,cy_,7*dpr,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    }
+  }
+
+  // Axes
+  ctx.strokeStyle='rgba(145,150,176,0.3)'; ctx.lineWidth=dpr;
+  ctx.beginPath(); ctx.moveTo(pd.l,pd.t); ctx.lineTo(pd.l,pd.t+ph); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pd.l,pd.t+ph); ctx.lineTo(pd.l+pw,pd.t+ph); ctx.stroke();
+
+  // X ticks
+  ctx.font=`${10*dpr}px system-ui`; ctx.textAlign='center'; ctx.fillStyle='rgba(145,150,176,0.75)';
+  for (const tV of [1000,2000,5000,10000,20000,50000]) {
+    const x=tx(tV); if(x<pd.l||x>pd.l+pw) continue;
+    ctx.beginPath(); ctx.moveTo(x,pd.t+ph); ctx.lineTo(x,pd.t+ph+5*dpr);
+    ctx.strokeStyle='rgba(145,150,176,0.3)'; ctx.stroke();
+    ctx.fillText(tV>=1000?`${tV/1000}k`:`${tV}`, x, pd.t+ph+16*dpr);
+  }
+  ctx.font=`${11*dpr}px system-ui`; ctx.fillStyle='rgba(145,150,176,0.75)';
+  ctx.fillText('Temperature (K)', pd.l+pw/2, pd.t+ph+36*dpr);
+
+  // Y ticks
+  ctx.textAlign='right'; ctx.font=`${10*dpr}px system-ui`;
+  for (const lV of [100,200,500,1000,2000,3000]) {
+    const y=ly(lV); if(y<pd.t||y>pd.t+ph) continue;
+    ctx.fillStyle='rgba(145,150,176,0.75)';
+    ctx.fillText(lV<1000?`${lV} nm`:`${lV/1000} µm`, pd.l-8*dpr, y+4*dpr);
+    ctx.beginPath(); ctx.moveTo(pd.l-5*dpr,y); ctx.lineTo(pd.l,y);
+    ctx.strokeStyle='rgba(145,150,176,0.3)'; ctx.stroke();
+  }
+  ctx.save();
+  ctx.translate(14*dpr, pd.t+ph/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.font=`${11*dpr}px system-ui`; ctx.fillStyle='rgba(145,150,176,0.75)';
+  ctx.fillText('Peak wavelength λmax', 0, 0);
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+// SECTION 2 — STEFAN–BOLTZMANN
+// ═══════════════════════════════════════════════════════
+function drawStefan() {
+  const pd = {t:36*dpr, r:24*dpr, b:52*dpr, l:54*dpr};
+  const pw = W - pd.l - pd.r,  ph = H - pd.t - pd.b;
+
+  ctx.fillStyle = '#0a0d18';
+  ctx.fillRect(0,0,W,H);
+
+  const TLO=1000, THI=60000, LLO=-4, LHI=5;
+  const tx = t => pd.l + Math.log10(t/TLO) / Math.log10(THI/TLO) * pw;
+  const ly = l => pd.t + ph - (Math.log10(Math.max(1e-5,l)) - LLO) / (LHI-LLO) * ph;
+
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; ctx.lineWidth=dpr;
+  ctx.setLineDash([2*dpr,4*dpr]);
+  for (const tV of [1000,2000,5000,10000,20000,50000]) {
+    const x=tx(tV); if(x<pd.l||x>pd.l+pw) continue;
+    ctx.beginPath(); ctx.moveTo(x,pd.t); ctx.lineTo(x,pd.t+ph); ctx.stroke();
+  }
+  for (let lp=LLO; lp<=LHI; lp++) {
+    const y=ly(Math.pow(10,lp)); if(y<pd.t||y>pd.t+ph) continue;
+    ctx.beginPath(); ctx.moveTo(pd.l,y); ctx.lineTo(pd.l+pw,y); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // T^4 reference line
+  ctx.strokeStyle='rgba(107,138,255,0.6)'; ctx.lineWidth=2*dpr;
+  ctx.setLineDash([6*dpr,4*dpr]);
+  ctx.beginPath();
+  let sfFirst = true;
+  for (let i=0; i<=600; i++) {
+    const t=TLO*Math.pow(THI/TLO,i/600);
+    const l=relLum(t), log10l=Math.log10(l);
+    if (log10l<LLO||log10l>LHI) { sfFirst=true; continue; }
+    const x=tx(t), y=ly(l);
+    if (y<pd.t||y>pd.t+ph) { sfFirst=true; continue; }
+    if (sfFirst) { ctx.moveTo(x,y); sfFirst=false; } else ctx.lineTo(x,y);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // slope=4 annotation
+  const s1=1500, s2=4000;
+  const sx1=tx(s1),sx2=tx(s2),sy1=ly(relLum(s1)),sy2=ly(relLum(s2));
+  ctx.save();
+  ctx.translate((sx1+sx2)/2-10*dpr,(sy1+sy2)/2-12*dpr);
+  ctx.rotate(Math.atan2(sy2-sy1,sx2-sx1));
+  ctx.font=`italic ${9.5*dpr}px system-ui`; ctx.fillStyle='rgba(107,138,255,0.65)'; ctx.textAlign='left';
+  ctx.fillText('slope = 4', 0, 0);
+  ctx.restore();
+
+  // Star dots — Vega label on left side to avoid Rigel's dot
+  const sfDy   = [4, -10, 4, 14];    // y-offsets: Betelgeuse, Sun, Vega, Rigel
+  const sfLeft = [false, false, true, false]; // Vega goes left
+  for (let si=0; si<STARS.length; si++) {
+    const st=STARS[si];
+    if (st.T<TLO||st.T>THI) continue;
+    const l=relLum(st.T), log10l=Math.log10(l);
+    if (log10l<LLO||log10l>LHI) continue;
+    const x=tx(st.T), y=ly(l);
+    if (y<pd.t||y>pd.t+ph) continue;
+
+    ctx.fillStyle=st.color; ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1.5*dpr;
+    ctx.beginPath(); ctx.arc(x,y,5*dpr,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+    const left = sfLeft[si];
+    ctx.font=`${9*dpr}px system-ui`; ctx.fillStyle=st.color;
+    ctx.textAlign = left ? 'right' : 'left';
+    ctx.fillText(st.name, left ? x-8*dpr : x+8*dpr, y+sfDy[si]*dpr);
+  }
+
+  // Current cursor
+  const curL=relLum(T), curLog=Math.log10(curL);
+  if (T>=TLO&&T<=THI && curLog>=LLO&&curLog<=LHI) {
+    const cx_=tx(T), cy_=ly(curL);
+    if (cy_>=pd.t&&cy_<=pd.t+ph) {
+      ctx.strokeStyle='rgba(244,194,74,0.5)'; ctx.lineWidth=dpr;
+      ctx.setLineDash([3*dpr,3*dpr]);
+      ctx.beginPath(); ctx.moveTo(cx_,pd.t); ctx.lineTo(cx_,pd.t+ph); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pd.l,cy_); ctx.lineTo(pd.l+pw,cy_); ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle='#f4c24a'; ctx.strokeStyle='#1a1d30'; ctx.lineWidth=2*dpr;
+      ctx.beginPath(); ctx.arc(cx_,cy_,7*dpr,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    }
+  }
+
+  // Axes
+  ctx.strokeStyle='rgba(145,150,176,0.3)'; ctx.lineWidth=dpr;
+  ctx.beginPath(); ctx.moveTo(pd.l,pd.t); ctx.lineTo(pd.l,pd.t+ph); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pd.l,pd.t+ph); ctx.lineTo(pd.l+pw,pd.t+ph); ctx.stroke();
+
+  // X ticks
+  ctx.font=`${10*dpr}px system-ui`; ctx.textAlign='center'; ctx.fillStyle='rgba(145,150,176,0.75)';
+  for (const tV of [1000,2000,5000,10000,20000,50000]) {
+    const x=tx(tV); if(x<pd.l||x>pd.l+pw) continue;
+    ctx.beginPath(); ctx.moveTo(x,pd.t+ph); ctx.lineTo(x,pd.t+ph+5*dpr);
+    ctx.strokeStyle='rgba(145,150,176,0.3)'; ctx.stroke();
+    ctx.fillText(tV>=1000?`${tV/1000}k`:`${tV}`, x, pd.t+ph+16*dpr);
+  }
+  ctx.font=`${11*dpr}px system-ui`; ctx.fillStyle='rgba(145,150,176,0.75)';
+  ctx.fillText('Temperature (K)', pd.l+pw/2, pd.t+ph+36*dpr);
+
+  // Y ticks — plain exponent integers
+  ctx.textAlign='right'; ctx.font=`${10*dpr}px system-ui`;
+  for (let lp=LLO; lp<=LHI; lp++) {
+    const y=ly(Math.pow(10,lp)); if(y<pd.t||y>pd.t+ph) continue;
+    ctx.fillStyle='rgba(145,150,176,0.75)';
+    ctx.fillText(String(lp), pd.l-8*dpr, y+4*dpr);
+    ctx.beginPath(); ctx.moveTo(pd.l-5*dpr,y); ctx.lineTo(pd.l,y);
+    ctx.strokeStyle='rgba(145,150,176,0.3)'; ctx.stroke();
+  }
+  ctx.save();
+  ctx.translate(14*dpr,pd.t+ph/2); ctx.rotate(-Math.PI/2);
+  ctx.textAlign='center'; ctx.font=`${11*dpr}px system-ui`; ctx.fillStyle='rgba(145,150,176,0.75)';
+  ctx.fillText('log(F / F☉)', 0, 0);
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════════════════
+function buildTempControl() {
+  const sv = Math.round(Math.log(T/1000) / Math.log(50) * 200) / 2;
+  const isPinned = overlays.some(o => o.T === T);
+  const tc = document.getElementById('tempcontrol');
+  tc.innerHTML = `
+    <div class="slider-row" style="margin-bottom:10px">
+      <div class="slider-label"><span>Temperature</span><span id="Tdisplay">${T.toLocaleString()} K</span></div>
+      <input type="range" id="Tslider" min="0" max="100" step="0.5" value="${clamp(sv,0,100)}" oninput="onTS(this.value)">
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;flex-wrap:wrap;gap:4px;flex:1" id="pills"></div>
+      ${sec === 0 ? `<div style="display:flex;gap:6px;flex-shrink:0">
+        ${isPinned
+          ? `<button class="btn" id="pinbtn" onclick="unpinCurve()" style="color:var(--accent);border-color:var(--accent)">Unpin</button>`
+          : `<button class="btn" id="pinbtn" onclick="pinCurve()">Pin curve</button>`}
+        <button class="btn" onclick="clearOv()" ${overlays.length===0?'disabled':''}>Clear all</button>
+      </div>` : ''}
+    </div>`;
+  const pills = tc.querySelector('#pills');
+  for (const st of STARS) {
+    const isA = st.name === activePreset;
+    const p = mk('button');
+    p.style.cssText = `display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.72rem;font-weight:500;cursor:pointer;border:1.5px solid ${isA?st.color:'rgba(255,255,255,0.14)'};background:${isA?st.color+'22':'var(--surface2)'};color:${isA?st.color:'var(--text2)'};transition:all .15s;`;
+    p.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${st.color};flex-shrink:0"></span>${st.name}`;
+    p.onclick = () => { T=st.T; activePreset=st.name; buildTempControl(); buildSidebar(); buildStats(); draw(); };
+    pills.appendChild(p);
+  }
+}
+
+function buildSidebar() {
+  const sb = document.getElementById('sidebar');
+  sb.innerHTML = '';
+
+  // Section-specific cards
+  if (sec === 0) buildSidebarSpectrum(sb);
+  if (sec === 1) buildSidebarWien(sb);
+  if (sec === 2) buildSidebarStefan(sb);
+}
+
+function buildSidebarSpectrum(sb) {
+  const isPinned = overlays.some(o => o.T === T);
+
+  const dc = mk('div','card');
+  dc.innerHTML = `<div class="card-title">Planck's Law</div>
+    <div class="law-desc">The <strong>Planck function</strong> B<sub>λ</sub> gives the intensity emitted per unit wavelength:
+      ${tex('B_\\lambda(\\lambda,T)=\\dfrac{2hc^2}{\\lambda^5}\\dfrac{1}{e^{hc/\\lambda k_B T}-1}', true)}
+      Hotter objects are brighter at <strong>every</strong> wavelength, and their peak shifts to shorter (bluer) wavelengths.
+    </div>`;
+  sb.appendChild(dc);
+
+  const rjc = mk('div','card');
+  rjc.innerHTML = `<div class="card-title">Rayleigh–Jeans Approximation</div>
+    <div class="law-desc">For sufficiently long wavelengths, we can use the Rayleigh–Jeans approximation:
+      ${tex('B_\\lambda^{\\rm RJ} \\approx \\dfrac{2ck_BT}{\\lambda^4}', true)}
+      This is valid when ${tex('\\dfrac{hc}{\\lambda k_B T} \\ll 1')}.
+      At short wavelengths this breaks down, and led to what was dubbed the <strong>ultraviolet catastrophe</strong>.
+      <div class="toggle-row" style="margin-top:9px">
+        <span class="toggle-label">Show on graph</span>
+        <div class="toggle ${showRayleigh?'on':''}" onclick="toggleRayleigh(this)"></div>
+      </div>
+    </div>`;
+  sb.appendChild(rjc);
+
+  const oc = mk('div','card');
+  oc.innerHTML = `
+    <div class="card-title">Comparison</div>
+    <div class="toggle-row">
+      <span class="toggle-label">Show λ_max marker</span>
+      <div class="toggle ${showPeakMark?'on':''}" onclick="togglePM(this)"></div>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Normalise to peak</span>
+      <div class="toggle ${normalise?'on':''}" id="normtoggle" onclick="toggleNorm(this)"></div>
+    </div>
+    <div class="toggle-row" style="align-items:center">
+      <span class="toggle-label">Filters</span>
+      <div style="display:flex;gap:4px">
+        ${['none','ubvri','ugriz'].map(s => {
+          const active = (s === 'none' ? filterSet === null : filterSet === s);
+          return `<button onclick="setFilters('${s}')" style="padding:3px 8px;border-radius:6px;font-size:.7rem;font-weight:500;cursor:pointer;border:1px solid ${active?'var(--accent)':'var(--border2)'};background:${active?'var(--accent)':'var(--surface2)'};color:${active?'#fff':'var(--text2)'};transition:all .15s">${s==='none'?'Off':s.toUpperCase()}</button>`;
+        }).join('')}
+      </div>
+    </div>
+    `;
+  sb.appendChild(oc);
+
+  if (overlays.length > 0) {
+    const ovc = mk('div','card');
+    ovc.innerHTML = `<div class="card-title">Pinned Curves</div>`;
+    for (const ov of overlays) {
+      const isSel = ov.T === selectedOverlay;
+      const row = mk('div');
+      row.style.cssText = `display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:.74rem;cursor:pointer;padding:5px 7px;border-radius:6px;border:1px solid ${isSel ? ov.color : 'transparent'};background:${isSel ? ov.color+'1a' : 'transparent'};color:${isSel ? ov.color : 'var(--text2)'};transition:all .15s;`;
+      row.innerHTML = `<span style="width:14px;height:3px;background:${ov.color};border-radius:2px;${isSel ? '' : 'border:1px dashed '+ov.color}"></span>${ov.T.toLocaleString()} K`;
+      row.onmouseenter = () => { if (!isSel) row.style.background = ov.color+'0d'; };
+      row.onmouseleave = () => { if (!isSel) row.style.background = 'transparent'; };
+      row.onclick = () => selectOverlay(ov.T);
+      ovc.appendChild(row);
+    }
+    sb.appendChild(ovc);
+  }
+}
+
+function buildSidebarWien(sb) {
+  const dc = mk('div','card');
+  dc.innerHTML = `<div class="card-title">Wien's Displacement Law</div>
+    <div class="law-desc">The wavelength of peak emission is inversely proportional to temperature:
+      ${tex('\\lambda_\\mathrm{max}\\cdot T = b = 2.898\\times10^{-3}\\,\\mathrm{m\\,K}', true)}
+      Doubling T halves λ<sub>max</sub> — objects appear <strong>bluer</strong> as they get hotter. In numbers:
+      ${tex('\\lambda_\\mathrm{max}\\approx\\dfrac{2.90\\times10^6}{T}\\,\\mathrm{nm}', true)}
+    </div>`;
+  sb.appendChild(dc);
+}
+
+function buildSidebarStefan(sb) {
+  const dc = mk('div','card');
+  dc.innerHTML = `<div class="card-title">Stefan–Boltzmann Law</div>
+    <div class="law-desc">Total power per unit surface area (surface flux):
+      ${tex('F = \\sigma T^4', true)}
+      where σ = 5.67×10⁻⁸ W m⁻² K⁻⁴. For a star of radius R, its luminosity is its total power output over the entire stellar surface:
+      ${tex('L = 4\\pi R^2\\sigma T^4', true)}
+      The graph shows F/F<sub>☉</sub>, the surface flux relative to the Sun. Click a star to highlight it.
+    </div>`;
+  sb.appendChild(dc);
+
+  const tc = mk('div','card');
+  tc.innerHTML = `<div class="card-title">Surface Flux (relative to Sun)</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:.68rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">
+      <span style="width:9px;flex-shrink:0"></span>
+      <span style="min-width:65px"></span>
+      <span style="flex:1">T</span>
+      <span>F/F<sub>☉</sub></span>
+    </div>`;
+  for (const st of STARS) {
+    const rl = relLum(st.T);
+    const row = mk('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:.74rem;cursor:pointer';
+    row.innerHTML = `
+      <span style="width:9px;height:9px;border-radius:50%;background:${st.color};flex-shrink:0"></span>
+      <span style="color:var(--text);min-width:65px">${st.name}</span>
+      <span style="color:var(--text2);flex:1">${st.T.toLocaleString()} K</span>
+      <span style="color:var(--gold)">${fmtLum(rl)}</span>`;
+    row.onclick = () => { T=st.T; activePreset=st.name; buildSidebar(); buildStats(); draw(); };
+    tc.appendChild(row);
+  }
+  sb.appendChild(tc);
+}
+
+// ═══════════════════════════════════════════════════════
+// STATS BAR
+// ═══════════════════════════════════════════════════════
+function buildStats() {
+  const sb = document.getElementById('statsbar');
+  const lp = wienNm(T);
+  const col = bbRGB(T);
+  const region = lp<380?'UV': lp<750?'Visible': lp<2500?'Near IR': lp<25000?'Mid IR':'Radio';
+
+  if (sec === 0 || sec === 1) {
+    sb.innerHTML = `<div class="stat-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat"><div class="stat-label">Temperature</div><div class="stat-value">${T.toLocaleString()} K</div></div>
+      <div class="stat"><div class="stat-label">Peak wavelength λ<sub>max</sub></div><div class="stat-value gold">${lp<1000?Math.round(lp)+' nm':(lp/1000).toFixed(2)+' µm'}</div></div>
+      <div class="stat"><div class="stat-label">EM region of peak</div><div class="stat-value accent">${region}</div></div>
+      <div class="stat" style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1"><div class="stat-label">Spectral type</div><div class="stat-value" style="color:${col}">${getSpType(T)}</div></div>
+        <div style="width:28px;height:28px;border-radius:50%;background:${col};border:2px solid rgba(255,255,255,0.2);flex-shrink:0"></div>
+      </div>
+    </div>`;
+  } else {
+    const rl = relLum(T);
+    sb.innerHTML = `<div class="stat-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat"><div class="stat-label">Temperature</div><div class="stat-value">${T.toLocaleString()} K</div></div>
+      <div class="stat"><div class="stat-label">T / T<sub>☉</sub></div><div class="stat-value">${(T/TSUN).toFixed(3)}</div></div>
+      <div class="stat"><div class="stat-label">F / F<sub>☉</sub></div><div class="stat-value gold">${fmtLum(rl)}×</div></div>
+      <div class="stat"><div class="stat-label">Flux σT⁴</div><div class="stat-value accent">${(SB*T**4).toExponential(2)} W/m²</div></div>
+    </div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// INTERACTIONS
+// ═══════════════════════════════════════════════════════
+function setSection(n) {
+  sec = n;
+  document.querySelectorAll('#tabs .tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  buildTempControl(); buildSidebar(); buildStats(); draw();
+}
+
+// Slider oninput — does NOT rebuild sidebar to avoid interrupting drag
+function onTS(val) {
+  T = Math.round(1000 * Math.pow(50, val/100));
+  T = clamp(T, 1000, 50000);
+  activePreset = null;
+  const d = document.getElementById('Tdisplay');
+  if (d) d.textContent = T.toLocaleString() + ' K';
+  // Update pin button label live without a full DOM rebuild
+  const pinBtn = document.getElementById('pinbtn');
+  if (pinBtn) {
+    const isPinned = overlays.some(o => o.T === T);
+    pinBtn.textContent = isPinned ? 'Unpin' : 'Pin curve';
+    pinBtn.onclick = isPinned ? unpinCurve : pinCurve;
+    pinBtn.style.color = isPinned ? 'var(--accent)' : '';
+    pinBtn.style.borderColor = isPinned ? 'var(--accent)' : '';
+  }
+  buildStats();
+  draw();
+}
+
+function togglePM(el) {
+  showPeakMark = !showPeakMark;
+  el.classList.toggle('on', showPeakMark);
+  draw();
+}
+
+function toggleNorm(el) {
+  normalise = !normalise;
+  el.classList.toggle('on', normalise);
+  draw();
+}
+
+function toggleRayleigh(el) {
+  showRayleigh = !showRayleigh;
+  el.classList.toggle('on', showRayleigh);
+  draw();
+}
+
+function setFilters(s) {
+  filterSet = s === 'none' ? null : s;
+  buildSidebar(); draw();
+}
+
+function pinCurve() {
+
+  if (overlays.some(o => o.T === T)) return;
+  overlays.push({ T, color: OV_COLORS[overlays.length % OV_COLORS.length] });
+  overlays.sort((a, b) => a.T - b.T);
+  buildTempControl(); buildSidebar(); draw();
+}
+
+function selectOverlay(ovT) {
+  selectedOverlay = selectedOverlay === ovT ? null : ovT;
+  buildSidebar(); draw();
+}
+
+function unpinCurve() {
+  overlays = overlays.filter(o => o.T !== T);
+  if (!overlays.some(o => o.T === selectedOverlay)) selectedOverlay = null;
+  buildTempControl(); buildSidebar(); draw();
+}
+
+function clearOv() {
+  overlays = [];
+  selectedOverlay = null;
+  buildTempControl(); buildSidebar(); draw();
+}
+
+function helpTab(n, el) {
+  document.querySelectorAll('.help-tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  document.querySelectorAll('.hs').forEach((s,i) => s.style.display = i===n ? '' : 'none');
+}
+
+function mk(tag, cls) {
+  const el = document.createElement(tag);
+  if (cls) el.className = cls;
+  return el;
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+resize();
+buildTempControl();
+buildSidebar();
+buildStats();
+</script>
+</body>
+</html>
